@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DDLA", "DDLA\DDLA.csproj", "{3081CF2F-F666-4446-B878-E450E6EB8C37}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleExample", "SimpleExample\SimpleExample.csproj", "{73B73595-D233-4689-B583-C126BF837DC6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{76A83EF1-5105-4300-BBF3-727CC66ADFA7}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3081CF2F-F666-4446-B878-E450E6EB8C37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3081CF2F-F666-4446-B878-E450E6EB8C37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3081CF2F-F666-4446-B878-E450E6EB8C37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3081CF2F-F666-4446-B878-E450E6EB8C37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73B73595-D233-4689-B583-C126BF837DC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73B73595-D233-4689-B583-C126BF837DC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73B73595-D233-4689-B583-C126BF837DC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73B73595-D233-4689-B583-C126BF837DC6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
