@@ -1,63 +1,57 @@
-﻿using DDLA.BLAS;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace SimpleExample.LAFFExercise.QR;
 
-namespace SimpleExample.LAFFExercise.QR
+/// <summary>
+/// Classic Gram-Schmidt QR factorization
+/// </summary>
+public class CGSQR(Matrix A) : QRBase(A)
 {
-    /// <summary>
-    /// Classic Gram-Schmidt QR factorization
-    /// </summary>
-    public class CGSQR(Matrix A) : QRBase(A)
+    public override bool IsEconomy => true;
+
+    public override void Kernel()
     {
-        public override bool IsEconomy => true;
+        int m = this.A.Rows;
+        int n = this.A.Cols;
+        this.Q = Matrix.Create(m, n);
+        this.R = Matrix.Create(n, n);
 
-        public override void Kernel()
+        var Q = this.Q.View;
+        var R = this.R.View;
+        var A = this.A.View;
+
+        for (int j = 0; j < n; j++)
         {
-            int m = A.Rows;
-            int n = A.Cols;
-            this.Q = Matrix.Create(m, n);
-            this.R = Matrix.Create(n, n);
+            // A = | Am0 amj Am2 |
+            // Q = | Qm0 qmj Qm2 |
+            // R = | R00 r0j R02 |
+            //     |   0 r1j R12 |
+            //     |   0 r2j R22 |
 
-            var Q = this.Q.View;
-            var R = this.R.View;
-
-            for (int j = 0; j < n; j++)
+            //r0j := Qm0^H*amj
+            for (int i = 0; i < j; i++)
             {
-                // A = | Am0 amj Am2 |
-                // Q = | Qm0 qmj Qm2 |
-                // R = | R00 r0j R02 |
-                //     |   0 r1j R12 |
-                //     |   0 r2j R22 |
-
-                //r0j := Qm0^H*amj
-                for (int i = 0; i < j; i++)
-                {
-                    R[i, j] = Q[..j, i] * A[..j, j];
-                }
-
-                //amj := amj − Qm0*r0j
-                //r1j := ‖aj‖2
-                var p11 = 0.0;
-                for (int i = 0; i < m; i++)
-                {
-                    // m = [0, m) => i
-                    //aij -= Qi0*r0j
-                    var aij = A[i, j];
-                    aij -= Q[i, ..j] * R[..j, j];
-                    //r1j := ‖aij‖2
-                    p11 += aij * aij;
-                    A[i, j] = aij;
-                }
-                p11 = Math.Sqrt(p11);
-                R[j, j] = p11;
-
-                //qmj := amj/ρ11
-                BlasProvider.Scal2(1 / p11, A[.., j], Q[.., j]);
+                R[i, j] = Q[..j, i] * A[..j, j];
             }
+
+            //amj := amj − Qm0*r0j
+            //r1j := ‖aj‖2
+            var r1j = 0.0;
+            for (int i = 0; i < m; i++)
+            {
+                // m = [0, m) => i
+                //aij -= qi0*r0j
+                var aij = A[i, j];
+                var qi0 = Q[i, ..j];
+                var r0j = R[..j, j];
+                aij -= qi0 * r0j;
+                //r1j := ‖aij‖2
+                r1j += aij * aij;
+                A[i, j] = aij;
+            }
+            r1j = Math.Sqrt(r1j);
+            R[j, j] = r1j;
+
+            //qmj := amj/ρ11
+            A[.., j].Scale(1 / r1j, Q[.., j]);
         }
     }
 }

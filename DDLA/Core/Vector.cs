@@ -339,9 +339,9 @@ public class Vector
     public double Dot(Vector other) =>
         BlasProvider.Dot(this, other);
 
-    public Matrix Outer(Vector other)
+    public Matrix Outer(Vector other, Matrix? output = null)
     {
-        Matrix result = Matrix.Create(Length, other.Length);
+        Matrix result = output ?? Matrix.Create(Length, other.Length);
         BlasProvider.GeR(1, this, other, result);
         return result;
     }
@@ -349,11 +349,36 @@ public class Vector
     public Matrix T => new(Data, Offset, 1, Length,
         Length * Stride, Stride);
 
-    public Vector LeftMul(MatrixView other)
+    public Vector LeftMul(MatrixView right, Vector? output = null)
     {
-        var result = T * other;
-        return new Vector(result.Data, result.Offset,
-            result.Cols, result.ColStride);
+        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Cols, Length, nameof(right));
+        var result = output ?? Create(right.Rows, uninited: true);
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+            1.0, right, this, 0.0, result);
+        return result;
+    }
+
+    public Vector LeftMul(MatrixView right, double beta, Vector output)
+    {
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+            1.0, right, this, beta, output);
+        return output;
+    }
+
+    public Vector LeftMul(double alpha, MatrixView right, Vector? output = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Cols, Length, nameof(right));
+        var result = output ?? Create(right.Rows, uninited: true);
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
+            alpha, right, this, 0.0, result);
+        return result;
+    }
+
+    public Vector LeftMul(double alpha, MatrixView right, double beta, Vector output)
+    {
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+            alpha, right, this, beta, output);
+        return output;
     }
 
     public double Nrm1() =>
@@ -376,6 +401,21 @@ public class Vector
 
     public double SumAbs()
         => UFunc.Sum<AbsOperator<double>>(this);
+
+    public Vector Scale(double scalar, Vector? output = null)
+    {
+        var result = output ?? Create(Length, uninited: true);
+        BlasProvider.Scal2(scalar, View, result.View);
+        return result;
+    }
+
+    public Vector Scaled(double scalar)
+    {
+        if (IsEmpty)
+            return this;
+        BlasProvider.Scal(scalar, View);
+        return this;
+    }
 
     public Vector Normalize()
     {

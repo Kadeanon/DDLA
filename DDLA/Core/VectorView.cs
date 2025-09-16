@@ -340,6 +340,21 @@ public readonly struct VectorView
         return result;
     }
 
+    public readonly void Added(VectorView other) => 
+        BlasProvider.Add(other, this);
+
+    public readonly void Added(double alpha, VectorView other) =>
+        BlasProvider.Axpy(alpha, other, this);
+
+    public readonly void Added(VectorView other, double beta) =>
+        BlasProvider.Xpby(other, beta, this);
+
+    public readonly void Added(double alpha, VectorView other, double beta) =>
+        BlasProvider.Axpby(alpha, other, beta, this);
+
+    public readonly void Subtracted(VectorView other) =>
+        BlasProvider.Sub(other, this);
+
     public readonly double Dot(VectorView other) =>
         BlasProvider.Dot(this, other);
 
@@ -353,11 +368,36 @@ public readonly struct VectorView
     public readonly Matrix T => new(Data, Offset, 1, Length,
         Length * Stride, Stride);
 
-    public readonly VectorView LeftMul(MatrixView other)
+    public readonly VectorView LeftMul(MatrixView right, VectorView? output = null)
     {
-        var result = T * other;
-        return new VectorView(result.Data, result.Offset,
-            result.Cols, result.ColStride);
+        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Rows, Length, nameof(right));
+        var result = output ?? Create(right.Cols, uninited:true);
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
+            1.0, right, this, 0.0, result);
+        return result;
+    }
+
+    public readonly VectorView LeftMul(MatrixView right, double beta, VectorView output)
+    {
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+            1.0, right, this, beta, output);
+        return output;
+    }
+
+    public readonly VectorView LeftMul(double alpha, MatrixView right, VectorView? output = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Cols, Length, nameof(right));
+        var result = output ?? Create(right.Rows, uninited: true);
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
+            alpha, right, this, 0.0, result);
+        return result;
+    }
+
+    public readonly VectorView LeftMul(double alpha, MatrixView right, double beta, VectorView output)
+    {
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+            alpha, right, this, beta, output);
+        return output;
     }
 
     public double Nrm1() =>
@@ -380,6 +420,29 @@ public readonly struct VectorView
 
     public readonly double SumAbs() 
         => UFunc.Sum<AbsOperator<double>> (this);
+
+    public VectorView Scale(double scalar, VectorView? output = null)
+    {
+        var result = output ?? Create(Length, uninited: true);
+        BlasProvider.Scal2(scalar, this, result);
+        return result;
+    }
+
+    public VectorView Scaled(double scalar)
+    {
+        if (IsEmpty)
+            return this;
+        BlasProvider.Scal(scalar, this);
+        return this;
+    }
+
+    public VectorView InvScaled(double scalar)
+    {
+        if (IsEmpty)
+            return this;
+        BlasProvider.Scal(1 / scalar, this);
+        return this;
+    }
 
     public VectorView Normalize()
     {

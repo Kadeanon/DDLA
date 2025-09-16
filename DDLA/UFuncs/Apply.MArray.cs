@@ -50,12 +50,12 @@ public static partial class UFunc
                 return;
             else if (indices.Length == 1)
             {
-                Details.Apply_Impl<TAction, TIn>(ref head,
+                Apply_Impl(ref head,
                     alpha, indices[0], action);
             }
             else if (indices.Length == 2)
             {
-                Details.Apply_Impl<TAction, TIn>(ref head,
+                Apply_Impl(ref head,
                     alpha, indices[0], indices[1], action);
             }
             else
@@ -112,11 +112,11 @@ public static partial class UFunc
                 return;
             else if (indices.Length == 1)
             {
-                Details.Map_Impl<TAction>(ref head, indices[0], action);
+                Map_Impl(ref head, indices[0], action);
             }
             else if (indices.Length == 2)
             {
-                Details.Map_Impl<TAction>(ref head,
+                Map_Impl(ref head,
                     indices[0], indices[1], action);
             }
             else
@@ -177,12 +177,12 @@ public static partial class UFunc
                 return;
             else if (indices.Length == 1)
             {
-                Details.Map_Impl<TAction, TIn>(
+                Map_Impl(
                     ref head, alpha, indices[0], action);
             }
             else if (indices.Length == 2)
             {
-                Details.Map_Impl<TAction, TIn>(ref head,
+                Map_Impl(ref head,
                     alpha, indices[0], indices[1], action);
             }
             else
@@ -262,12 +262,12 @@ public static partial class UFunc
                 return;
             else if (indices.Length == 1)
             {
-                Details.Map_Impl<TAction>(ref srcHead,
+                Map_Impl(ref srcHead,
                      ref destHead, indices[0], action);
             }
             else if (indices.Length == 2)
             {
-                Details.Map_Impl<TAction>(ref srcHead,
+                Map_Impl(ref srcHead,
                     ref destHead, indices[0], indices[1], action);
             }
             else
@@ -352,12 +352,12 @@ public static partial class UFunc
                 return;
             else if (indices.Length == 1)
             {
-                Details.Map_Impl<TAction, TIn>(ref srcHead,
+                Map_Impl(ref srcHead,
                     alpha, ref destHead, indices[0], action);
             }
             else if (indices.Length == 2)
             {
-                Details.Map_Impl<TAction, TIn>(ref srcHead,
+                Map_Impl(ref srcHead,
                     alpha, ref destHead, indices[0], indices[1], action);
             }
             else
@@ -439,7 +439,7 @@ public static partial class UFunc
                 return;
             else if (indices.Length == 1)
             {
-                Details.Combine_Impl<TAction>(ref srcHead, ref destHead,
+                Combine_Impl(ref srcHead, ref destHead,
                     indices[0], action);
             }
             else if (indices.Length == 2)
@@ -528,12 +528,12 @@ public static partial class UFunc
                 return;
             else if (indices.Length == 1)
             {
-                Details.Combine_Impl<TAction, TIn>(ref srcHead,
+                Combine_Impl(ref srcHead,
                     alpha, ref destHead, indices[0], action);
             }
             else if (indices.Length == 2)
             {
-                Details.Combine_Impl<TAction, TIn>(ref srcHead,
+                Combine_Impl(ref srcHead,
                     alpha, ref destHead, indices[0], indices[1], action);
             }
             else

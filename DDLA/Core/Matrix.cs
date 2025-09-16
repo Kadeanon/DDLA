@@ -400,7 +400,7 @@ public class Matrix : IEnumerable<double>
                 throw new ArgumentOutOfRangeException(nameof(rows), $"Row range {rows} is out of range.");
             if (startCol < 0 || lengthCol < 0 || startCol + lengthCol > Cols)
                 throw new ArgumentOutOfRangeException(nameof(cols), $"Column range {cols} is out of range.");
-            value.CopyTo(SliceSubUncheck(startRow, lengthRow, startCol, lengthCol));
+            value.View.CopyTo(View.SliceSubUncheck(startRow, lengthRow, startCol, lengthCol));
         }
     }
 
@@ -428,7 +428,7 @@ public class Matrix : IEnumerable<double>
             if (startCol < 0 || lengthCol < 0 || startCol + lengthCol > Cols)
                 throw new ArgumentOutOfRangeException(nameof(cols),
                     $"Column range {cols} is out of range.");
-            value.CopyTo(GetRowUncheck(row));
+            value.View.CopyTo(View.GetRowUncheck(row));
         }
     }
 
@@ -456,7 +456,7 @@ public class Matrix : IEnumerable<double>
             if (col < 0 || col >= Cols)
                 throw new ArgumentOutOfRangeException(nameof(colIndex),
                     $"Column index {col} is out of range.");
-            value.CopyTo(SliceColUncheck(col, startRow, lengthRow));
+            value.View.CopyTo(View.SliceColUncheck(col, startRow, lengthRow));
         }
     }
 
@@ -759,6 +759,111 @@ public class Matrix : IEnumerable<double>
         BlasProvider.GeMM(1.0, left, right, 0.0, dest);
         return dest;
     }
+
+    public Matrix Multify(MatrixView other, Matrix? output = null)
+        => Multify(1.0, other, output);
+
+    public Matrix Multify(MatrixView other, double beta, Matrix output)
+        => Multify(1.0, other, beta, output);
+
+    public Matrix Multify(double alpha, MatrixView other, Matrix? output = null)
+    {
+        var m = Rows;
+        var k = Cols;
+        ArgumentOutOfRangeException.ThrowIfNotEqual(other.Rows, k, nameof(other));
+        var n = other.Cols;
+        if (output is Matrix result)
+        {
+            ArgumentOutOfRangeException.ThrowIfNotEqual(result.Rows, m, nameof(output));
+            ArgumentOutOfRangeException.ThrowIfNotEqual(result.Cols, n, nameof(output));
+        }
+        else
+        {
+            result = Create(m, n);
+        }
+        BlasProvider.GeMM(alpha, this, other, 0.0, result);
+        return result;
+    }
+
+    public Matrix Multify(double alpha, MatrixView other, double beta, Matrix output)
+    {
+        var m = Rows;
+        var k = Cols;
+        ArgumentOutOfRangeException.ThrowIfNotEqual(other.Rows, k, nameof(other));
+        var n = other.Cols;
+        ArgumentOutOfRangeException.ThrowIfNotEqual(output.Rows, m, nameof(output));
+        ArgumentOutOfRangeException.ThrowIfNotEqual(output.Cols, n, nameof(output));
+        BlasProvider.GeMM(alpha, this, other, beta, output);
+        return output;
+    }
+
+    public Vector Multify(VectorView other, Vector? output = null)
+        => Multify(1.0, other, output);
+
+    public Vector Multify(VectorView other, double beta, Vector output)
+        => Multify(1.0, other, beta, output);
+
+    public Vector Multify(double alpha, VectorView other, Vector? output = null)
+    {
+        var m = Rows;
+        var k = Cols;
+        ArgumentOutOfRangeException.ThrowIfNotEqual(other.Length, k, nameof(other));
+        if (output is Vector result)
+        {
+            ArgumentOutOfRangeException.ThrowIfNotEqual(result.Length, m, nameof(output));
+        }
+        else
+        {
+            result = Vector.Create(m);
+        }
+        BlasProvider.GeMV(alpha, this, other, 0.0, result);
+        return result;
+    }
+
+    public Vector Multify(double alpha, VectorView other, double beta, Vector output)
+    {
+        var m = Rows;
+        var k = Cols;
+        ArgumentOutOfRangeException.ThrowIfNotEqual(other.Length, k, nameof(other));
+        ArgumentOutOfRangeException.ThrowIfNotEqual(output.Length, m, nameof(output));
+        BlasProvider.GeMV(alpha, this, other, beta, output);
+        return output;
+    }
+
+    public void Rank1(VectorView x, VectorView y)
+        => BlasProvider.GeR(1.0, x, y, this);
+
+    public void Rank1(double alpha, VectorView x, VectorView y)
+        => BlasProvider.GeR(alpha, x, y, this);
+
+    public void Rank1(UpLo uplo, VectorView x, VectorView y)
+    {
+        if (uplo is UpLo.Dense)
+            BlasProvider.GeR(1.0, x, y, this);
+        else if (uplo is UpLo.Upper or UpLo.Lower)
+            BlasProvider.SyR(uplo, 1.0, x, this);
+        else
+            throw new ArgumentException($"Matrix c must be upper or lower triangular!");
+    }
+
+    public void Rank1(UpLo uplo, double alpha, VectorView x, VectorView y)
+    {
+        if (uplo is UpLo.Dense)
+            BlasProvider.GeR(alpha, x, y, this);
+        else if (uplo is UpLo.Upper or UpLo.Lower)
+            BlasProvider.SyR(uplo, alpha, x, this);
+        else
+            throw new ArgumentException($"Matrix c must be upper or lower triangular!");
+    }
+
+    public void ShiftDiag(double alpha)
+        => BlasProvider.ShiftDiag(alpha, View);
+
+    public void SwapCol(int i, int j)
+        => BlasProvider.Swap(View.GetColumn(i), View.GetColumn(j));
+
+    public void SwapRow(int i, int j)
+        => BlasProvider.Swap(View.GetRow(i), View.GetRow(j));
     #endregion Math
 
     #region Ufunc

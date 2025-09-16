@@ -21,7 +21,7 @@ public partial class MArray
             {
                 var dimOffset = indexes[i];
                 var dimTotalLength = Lengths[i];
-                Utilities.ThrowUtils.ThrowIfNotInRange_LeftClosedRightOpen
+                ThrowUtils.ThrowIfNotInRange_LeftClosedRightOpen
                     (dimOffset, 0, dimTotalLength,
                     $"The index {dimOffset} is out of bounds " +
                     $"for dimension {i} with length {dimTotalLength}.");

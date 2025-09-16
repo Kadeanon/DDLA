@@ -46,26 +46,20 @@ public static partial class BlasProvider
         return trans;
     }
 
-    private static void CheckTriMatUplo(UpLo uplo)
-    {
-        if (ShouldCheck && uplo != UpLo.Upper && uplo != UpLo.Lower)
-            throw new ArgumentException($"Matrix c must be upper or lower triangular!");
-    }
-
-    private static void CheckLength(in vector vec, int expectedLength)
+    internal static void CheckLength(in vector vec, int expectedLength)
     {
         if (ShouldCheck && vec.Length != expectedLength)
             throw new ArgumentException($"Length of vector must be equal to {expectedLength}.");
     }
 
-    private static int CheckLength(in vector x, in vector y)
+    internal static int CheckLength(in vector x, in vector y)
     {
         if (ShouldCheck && x.Length != y.Length)
             throw new ArgumentException("Error: x and y must have the same length.");
         return x.Length;
     }
 
-    private static int CheckLength(in vector x, in vector y, in vector z)
+    internal static int CheckLength(in vector x, in vector y, in vector z)
     {
         if (ShouldCheck)
         {
@@ -77,7 +71,7 @@ public static partial class BlasProvider
         return x.Length;
     }
 
-    private static (int m, int n) CheckLength(in matrix a, TransType aTrans, in matrix b)
+    internal static (int m, int n) CheckLength(in matrix a, TransType aTrans, in matrix b)
     {
         var m = a.Rows;
         var n = a.Cols;
@@ -101,7 +95,7 @@ public static partial class BlasProvider
             return (m, n);
     }
 
-    private static (int rows, int cols) GetLengths(in matrix c)
+    internal static (int rows, int cols) GetLengths(in matrix c)
     {
         var rows = c.Rows;
         var cols = c.Cols;
