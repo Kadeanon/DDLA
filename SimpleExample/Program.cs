@@ -14,7 +14,7 @@ internal class Program
 
     static void TestQRFamily(int rows, int cols)
     {
-        var A = CreateRandomMat(rows, cols);
+        var A = Matrix.RandomDense(rows, cols);
         Console.WriteLine("~~~~~~~~Classic Gram-Schmidt~~~~~~~~");
         var cgs = new CGSQR(A);
         TestQR(cgs);
@@ -38,11 +38,6 @@ internal class Program
         //TestQR(hhwy);
         //Console.WriteLine();
         //Console.WriteLine();
-    }
-
-    static Matrix CreateRandomMat(int rows, int cols)
-    {
-        return Matrix.RandomDense(rows, cols);
     }
 
     static void TestQR(QRBase qr)

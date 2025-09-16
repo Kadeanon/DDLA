@@ -22,7 +22,7 @@ public static partial class BlasProvider
     /// </summary>
     /// <remarks><see cref="double.NaN"/> is seen as
     /// smaller than any other value.</remarks>
-    public static int Amax(in vector x)
+    public static int AMax(in vector x)
     {
         int length = x.Length;
         if (length == 0) return -1;

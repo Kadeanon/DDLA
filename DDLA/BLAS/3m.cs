@@ -54,7 +54,7 @@ public static partial class BlasProvider
         if (m == 0) return;
         var (ma, k) = GetLengthsAfterTrans(A, aTrans);
         if (k == 0) return;
-        CheckLengthsAfterTrans(B, bTrans, m, k);
+        CheckLengthsAfterTrans(B, bTrans, k, m);
         if (ma != m)
             throw new ArgumentException($"Dimensions of matrix A must be match!");
 

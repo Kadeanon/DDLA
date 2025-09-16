@@ -359,7 +359,7 @@ public class LU
     internal static int GetAndApplyPivUnblock(MatrixView A, MatrixView full)
     {
         var col = A.GetColUncheck(0);
-        var ipiv = Amax(col);
+        var ipiv = AMax(col);
         if (ipiv != 0)
             full.SwapRow(0, ipiv);
         return ipiv;

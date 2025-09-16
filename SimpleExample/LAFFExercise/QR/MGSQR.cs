@@ -30,7 +30,6 @@ public class MGSQR(Matrix A)
             var Am2 = A[.., (j + 1)..];
             var r12 = R[j, (j + 1)..];
 
-
             // amj := amj/ρ11
             amj.InvScaled(rho11);
 
