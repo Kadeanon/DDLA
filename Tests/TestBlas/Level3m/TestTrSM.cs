@@ -1,11 +1,4 @@
-﻿
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Tests.TestBlas.Level3m;
+﻿namespace Tests.TestBlas.Level3m;
 
 [TestClass]
 public class TestTrSM

@@ -168,9 +168,4 @@ public partial class MArray
         return this;
     }
     #endregion self operations
-
-    public double NrmF()
-    {
-        throw new NotImplementedException();
-    }
 }

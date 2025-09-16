@@ -10,7 +10,7 @@ public class TestAMaxV
     {
 
         var x = CreateVectorRandom(length);
-        nint expectedIndex = 0;
+        var expectedIndex = 0;
         double maxValue = x[0];
 
         for (int i = 1; i < length; i++)
@@ -33,7 +33,7 @@ public class TestAMaxV
     {
         int stride = 2;
         var x = CreateVectorStrideRandom(length, stride);
-        nint expectedIndex = 0;
+        var expectedIndex = 0;
         double maxValue = x[0];
 
         for (int i = 1; i < length; i++)
