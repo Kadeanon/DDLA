@@ -1,5 +1,4 @@
-﻿using DDLA.BLAS;
-using DDLA.Core;
+﻿using DDLA.Core;
 using DDLA.Misc;
 using DDLA.Misc.Flags;
 using System.Runtime.CompilerServices;
@@ -12,18 +11,14 @@ public class Cholesky
 {
     readonly UpLo uplo;
     readonly MatrixView matrix;
-    readonly int n;
     bool computed;
 
     public Cholesky(UpLo uplo, MatrixView mat, bool inplace = false)
     {
         this.uplo = uplo;
-        n = CheckSymmMatLength(mat, uplo);
+        CheckSymmMatLength(mat, uplo);
         if (inplace)
         {
-            if (mat.ColStride != 1)
-                throw new ArgumentException("In-place operation " +
-                    "requires row-major matrix.", nameof(mat));
             matrix = mat;
         }
         else
@@ -33,31 +28,12 @@ public class Cholesky
         computed = false;
     }
 
-    private void Compute()
+    public void ComputeOnce()
     {
         if (computed)
             return;
-        CholDecompose(uplo, matrix);
         computed = true;
-    }
-
-    public VectorView Solve(VectorView b, bool inplace = false)
-    {
-        Compute();
-        var bMat = new MatrixView(b);
-        if (!inplace)
-            bMat = bMat.Clone();
-        CholeskySolve(uplo, matrix, bMat);
-        return bMat.GetColumn(0);
-    }
-
-    public MatrixView Solve(MatrixView b, bool inplace = false)
-    {
-        Compute();
-        if (!inplace)
-            b = b.Clone();
-        CholeskySolve(uplo, matrix, b);
-        return b;
+        CholDecompose(uplo, matrix);
     }
 
     /// <summary>
@@ -90,6 +66,25 @@ public class Cholesky
             else
                 CholeskyUpperUnblock(A);
         }
+    }
+
+    public VectorView Solve(VectorView b, bool inplace = false)
+    {
+        ComputeOnce();
+        var bMat = new MatrixView(b);
+        if (!inplace)
+            bMat = bMat.Clone();
+        CholeskySolve(uplo, matrix, bMat);
+        return bMat.GetColumn(0);
+    }
+
+    public MatrixView Solve(MatrixView b, bool inplace = false)
+    {
+        ComputeOnce();
+        if (!inplace)
+            b = b.Clone();
+        CholeskySolve(uplo, matrix, b);
+        return b;
     }
 
     /// <summary>
@@ -134,23 +129,23 @@ public class Cholesky
         if (A.IsEmpty) return;
 
         int i = 0;
-        ref var a00 = ref A.GetHeadRef();
+        ref var a11 = ref A.GetHeadRef();
         var diagStride = A.RowStride + A.ColStride;
         for (; i < A.Rows - 1; i++)
         {
-            var a10 = A.SliceColUncheck(i, i + 1);
-            var a11 = A.SliceSubUncheck(i + 1, i + 1);
-            if (a00 <= 0)
+            var a21 = A.SliceColUncheck(i, i + 1);
+            var a22 = A.SliceSubUncheck(i + 1, i + 1);
+            if (a11 <= 0)
                 throw new LinalgException("Cholesky",
                     $"Warning: Cholesky factorization " +
                     $"encountered A non-positive pivot" +
-                    $" at index {i} with value {a00}.");
-            a00 = Math.Sqrt(a00);
-            InvScal(a00, a10);
-            SyR(UpLo.Lower, -1, a10, a11);
-            a00 = ref Unsafe.Add(ref a00, diagStride);
+                    $" at index {i} with value {a11}.");
+            a11 = Math.Sqrt(a11);
+            InvScal(a11, a21);
+            SyR(UpLo.Lower, -1, a21, a22);
+            a11 = ref Unsafe.Add(ref a11, diagStride);
         }
-        a00 = Math.Sqrt(a00);
+        a11 = Math.Sqrt(a11);
     }
 
     internal static void CholeskyLowerBlock(MatrixView A)

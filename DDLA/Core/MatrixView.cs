@@ -757,6 +757,12 @@ public readonly struct MatrixView : IEnumerable<double>
     public void Rank1(double alpha, VectorView x, VectorView y)
         => BlasProvider.GeR(alpha, x, y, this);
 
+    public void Rank1(UpLo uplo, VectorView x)
+        => BlasProvider.SyR(uplo, 1.0, x, this);
+
+    public void Rank1(UpLo uplo, double alpha, VectorView x)
+        => BlasProvider.SyR(uplo, alpha, x, this);
+
     public void Rank1(UpLo uplo, VectorView x, VectorView y)
     {
         if(uplo is UpLo.Dense)

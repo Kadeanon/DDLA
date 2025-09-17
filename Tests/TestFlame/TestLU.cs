@@ -1,5 +1,5 @@
 ﻿
-using DDLA.Fatorizations;
+using DDLA.Factorizations;
 
 namespace Tests.TestFlame;
 

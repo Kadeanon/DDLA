@@ -8,11 +8,11 @@ using System.Runtime.InteropServices;
 
 using static DDLA.BLAS.BlasProvider;
 
-namespace DDLA.Fatorizations;
+namespace DDLA.Factorizations;
 
 public class LU
 {
-    internal readonly Matrix matrix;
+    readonly MatrixView matrix;
     internal readonly int[]? pivs;
     internal readonly int n;
     internal bool computed;
@@ -34,7 +34,7 @@ public class LU
         ArgumentOutOfRangeException.ThrowIfNotEqual(A.Cols, n, nameof(A));
 
         if (inplace)
-            matrix = new(A);
+            matrix = A;
         else
             matrix = A.Clone();
 
@@ -107,16 +107,16 @@ public class LU
     {
         ComputeOnce();
 
+        P = Matrix.Eyes(n);
+        if (pivs != null)
+            ApplyPiv(P, pivs);
+
         L = matrix.Clone();
         MakeTr(L, UpLo.Lower);
         SetDiag(1.0, L);
 
-        U = matrix;
+        U = new(matrix);
         MakeTr(U, UpLo.Upper);
-
-        P = Matrix.Eyes(n);
-        if (pivs != null)
-            ApplyPiv(P, pivs);
     }
 
     #region LU without pivoting
@@ -255,7 +255,7 @@ public class LU
             PLUDecUnblock(A, pivs);
     }
 
-    public static void PLUSolve(MatrixView A, Span<int> pivs, MatrixView B, 
+    public static void PLUSolve(MatrixView A, Span<int> pivs, MatrixView B,
         bool trans = false)
     {
         int length = A.Rows;
@@ -266,7 +266,7 @@ public class LU
         PLUSolveInternel(trans, A, pivs, B);
     }
 
-    public static void PLUSolve(MatrixView A, Span<int> pivs, 
+    public static void PLUSolve(MatrixView A, Span<int> pivs,
         MatrixView B, MatrixView X, bool trans = false)
     {
         int length = A.Rows;
@@ -335,7 +335,7 @@ public class LU
 
     internal static void PLUDecUnblock(MatrixView A, Span<int> pivs)
     {
-        MatrixView full = A;
+        var full = A;
         int length = Math.Min(A.Cols, A.Rows);
         ref var p = ref pivs[0];
 
