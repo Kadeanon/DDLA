@@ -418,13 +418,14 @@ public readonly struct MatrixView : IEnumerable<double>
         return target;
     }
 
-    public readonly MatrixView MakeContinous(bool forceCopy)
+    public readonly void MakeTr(UpLo uplo)
     {
-        if (!forceCopy && RowStride == Cols && ColStride == 1)
-        {
-            return this; // Already continuous
-        }
-        return Clone();
+        BlasProvider.MakeTr(this, uplo);
+    }
+
+    public readonly void MakeSy(UpLo uplo)
+    {
+        BlasProvider.MakeSy(this, uplo);
     }
 
     public readonly VectorView Flatten(bool forceCopy = false)

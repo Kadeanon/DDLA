@@ -417,6 +417,14 @@ public class Vector
         return this;
     }
 
+    public Vector InvScaled(double scalar)
+    {
+        if (IsEmpty)
+            return this;
+        BlasProvider.InvScal(scalar, View);
+        return this;
+    }
+
     public Vector Normalize()
     {
         if (IsEmpty)

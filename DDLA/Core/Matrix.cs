@@ -606,13 +606,14 @@ public class Matrix : IEnumerable<double>
         return target;
     }
 
-    public Matrix MakeContinous(bool forceCopy)
+    public void MakeTr(UpLo uplo)
     {
-        if (!forceCopy && RowStride == Cols && ColStride == 1)
-        {
-            return this; // Already continuous
-        }
-        return Clone();
+        BlasProvider.MakeTr(View, uplo);
+    }
+
+    public void MakeSy(UpLo uplo)
+    {
+        BlasProvider.MakeSy(View, uplo);
     }
 
     public Vector Flatten(bool forceCopy = false)

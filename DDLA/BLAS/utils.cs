@@ -27,11 +27,11 @@ public static partial class BlasProvider
     {
         int m = mat.Rows;
         int n = mat.Cols;
-        if (ShouldCheck)
-        {
-            if(uplo is not UpLo.Dense && m != n)
-                throw new ArgumentException("Dimensions of matrixs a must be match!");
-        }
+        //if (ShouldCheck)
+        //{
+        //    if(uplo is not UpLo.Dense && m != n)
+        //        throw new ArgumentException("Dimensions of matrixs a must be match!");
+        //}
         return (m, n);
     }
 
