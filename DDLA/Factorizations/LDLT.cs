@@ -54,16 +54,16 @@ public class LDLT
         CheckSymmMatLength(A, uplo);
         if (uplo == UpLo.Lower)
         {
-            //if (A.MinDim > BlockSize)
-            //    LDLTLowerBlock(A);
-            //else
+            if (A.MinDim > BlockSize)
+                LDLTLowerBlock(A);
+            else
                 LDLTLowerUnblock(A);
         }
         else
         {
-            //if (A.MinDim > BlockSize)
-            //    LDLTUpperBlock(A);
-            //else
+            if (A.MinDim > BlockSize)
+                LDLTUpperBlock(A);
+            else
                 LDLTUpperUnblock(A);
         }
     }
@@ -153,6 +153,43 @@ public class LDLT
         }
     }
 
+    internal static void LDLTLowerBlock(MatrixView A)
+    {
+        MatrixView Work = default;
+        if(A.Rows > BlockSize)
+        {
+            var rows = A.Rows - BlockSize;
+            var cols = Math.Min(rows, BlockSize);
+            Work = Matrix.Create(rows, cols, uninited: true);
+        }
+
+        var partA = PartitionGrid.Create
+            (A, 0, 0, Quadrant.TopLeft,
+            out var A00, out var A01, out var A02,
+            out var A10, out var A11, out var A12,
+            out var A20, out var A21, out var A22);
+
+        while (A22.Rows > 0)
+        {
+            var block = Math.Min(BlockSize, A22.Rows);
+            using var partAStep = partA.Step(block, block);
+
+            LDLTLowerUnblock(A11);
+            if (A22.Rows > 0)
+            {
+                TrSM(SideType.Right, UpLo.Lower, 
+                    TransType.OnlyTrans, DiagType.Unit,
+                    1.0, A11, A21);
+                var Y21 = Work[..A21.Rows, ..A21.Cols];
+                A21.CopyTo(Y21);
+                for (var j = 0; j < block; j++)
+                    A21[.., j].InvScaled(A11[j, j]);
+                GeMMT(UpLo.Lower,
+                    -1, Y21, A21.T, 1.0, A22);
+            }
+        }
+    }
+
     internal static void LDLTUpperUnblock(MatrixView A)
     {
         int i = 0;
@@ -169,6 +206,43 @@ public class LDLT
             var A22 = A.SliceSubUncheck(i + 1, i + 1);
             InvScal(a11, a12);
             SyR(UpLo.Upper, -a11, a12, A22);
+        }
+    }
+
+    internal static void LDLTUpperBlock(MatrixView A)
+    {
+        MatrixView Work = default;
+        if (A.Rows > BlockSize)
+        {
+            var cols = A.Cols - BlockSize; 
+            var rows = Math.Min(cols, BlockSize);
+            Work = Matrix.Create(rows, cols, uninited: true);
+        }
+
+        var partA = PartitionGrid.Create
+            (A, 0, 0, Quadrant.TopLeft,
+            out var A00, out var A01, out var A02,
+            out var A10, out var A11, out var A12,
+            out var A20, out var A21, out var A22);
+
+        while (A22.Rows > 0)
+        {
+            var block = Math.Min(BlockSize, A22.Rows);
+            using var partAStep = partA.Step(block, block);
+
+            LDLTUpperUnblock(A11);
+            if (A22.Rows > 0)
+            {
+                TrSM(SideType.Left, UpLo.Upper,
+                    TransType.OnlyTrans, DiagType.Unit,
+                    1.0, A11, A12);
+                var Y12 = Work[..A12.Rows, ..A12.Cols];
+                A12.CopyTo(Y12);
+                for (var i = 0; i < block; i++)
+                    A12[i, ..].InvScaled(A11[i, i]);
+                GeMMT(UpLo.Upper,
+                    -1.0, A12.T, Y12, 1.0, A22);
+            }
         }
     }
 

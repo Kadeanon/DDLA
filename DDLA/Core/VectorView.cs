@@ -395,7 +395,7 @@ public readonly struct VectorView
 
     public readonly VectorView LeftMul(double alpha, MatrixView right, double beta, VectorView output)
     {
-        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             alpha, right, this, beta, output);
         return output;
     }

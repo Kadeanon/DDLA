@@ -19,9 +19,9 @@ public class TestLDLT
     public void TestSmallUnbLDLTLower()
         => TestLDLTLowerDec(small, LDLT.LDLTLowerUnblock);
 
-    //[TestMethod]
-    //public void TestMediumBloLDLTLower()
-    //    => TestLDLTLowerDec(medium, LDLT.LDLTLowerBlock);
+    [TestMethod]
+    public void TestMediumBloLDLTLower()
+        => TestLDLTLowerDec(medium, LDLT.LDLTLowerBlock);
 
     private static void TestLDLTLowerDec(int m, Action<MatrixView> action, double tol = 1e-10)
     {
@@ -62,9 +62,9 @@ public class TestLDLT
     public void TestSmallUnbLDLTUpper()
         => TestLDLTUpperDec(small, LDLT.LDLTUpperUnblock);
 
-    //[TestMethod]
-    //public void TestMediumBloLDLTUpper()
-    //    => TestLDLTUpperDec(medium, LDLT.LDLTUpperBlock);
+    [TestMethod]
+    public void TestMediumBloLDLTUpper()
+        => TestLDLTUpperDec(medium, LDLT.LDLTUpperBlock);
 
     private static void TestLDLTUpperDec(int m, Action<MatrixView> action, double tol = 1e-10)
     {

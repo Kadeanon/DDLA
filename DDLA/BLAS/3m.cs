@@ -69,7 +69,7 @@ public static partial class BlasProvider
             ref C.GetHeadRef(), C.RowStride, C.ColStride);
     }
 
-    public static void GeMMt
+    public static void GeMMT
         (UpLo cUplo, 
         scalar alpha,
         in matrix A,

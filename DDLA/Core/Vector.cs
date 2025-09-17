@@ -353,14 +353,14 @@ public class Vector
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(right.Cols, Length, nameof(right));
         var result = output ?? Create(right.Rows, uninited: true);
-        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             1.0, right, this, 0.0, result);
         return result;
     }
 
     public Vector LeftMul(MatrixView right, double beta, Vector output)
     {
-        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             1.0, right, this, beta, output);
         return output;
     }
@@ -376,7 +376,7 @@ public class Vector
 
     public Vector LeftMul(double alpha, MatrixView right, double beta, Vector output)
     {
-        BlasProvider.GeMV(Misc.Flags.TransType.OnlyConj,
+        BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             alpha, right, this, beta, output);
         return output;
     }

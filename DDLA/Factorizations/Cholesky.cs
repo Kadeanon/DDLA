@@ -128,71 +128,60 @@ public class Cholesky
     {
         if (A.IsEmpty) return;
 
-        int i = 0;
-        ref var a11 = ref A.GetHeadRef();
-        var diagStride = A.RowStride + A.ColStride;
-        for (; i < A.Rows - 1; i++)
+        for (var i = 0; i < A.Rows; i++)
         {
-            var a21 = A.SliceColUncheck(i, i + 1);
-            var a22 = A.SliceSubUncheck(i + 1, i + 1);
-            if (a11 <= 0)
-                throw new LinalgException("Cholesky",
-                    $"Warning: Cholesky factorization " +
-                    $"encountered A non-positive pivot" +
-                    $" at index {i} with value {a11}.");
-            a11 = Math.Sqrt(a11);
-            InvScal(a11, a21);
-            SyR(UpLo.Lower, -1, a21, a22);
-            a11 = ref Unsafe.Add(ref a11, diagStride);
+            ref var alpha11 = ref A[i, i];
+            var a21 = A[(i + 1).., i];
+            var A22 = A[(i + 1).., (i + 1)..];
+            Sqrt(ref alpha11);
+            a21.InvScaled(alpha11);
+            A22.Rank1(UpLo.Lower, -1, a21);
         }
-        a11 = Math.Sqrt(a11);
     }
 
     internal static void CholeskyLowerBlock(MatrixView A)
     {
         var partA = PartitionGrid.Create
             (A, 0, 0, Quadrant.TopLeft,
-            out var a00, out var a01, out var a02,
+            out var A00, out var a01, out var A02,
             out var a10, out var a11, out var a12,
-            out var a20, out var a21, out var a22);
-        var block = Math.Min(BlockSize, a22.Rows);
+            out var A20, out var a21, out var A22);
 
-        while (a22.Rows > 0)
+        while (A22.Rows > 0)
         {
+            var block = Math.Min(BlockSize, A22.Rows);
             using var partAStep = partA.Step(block, block);
 
             CholeskyLowerUnblock(a11);
             TrSM(SideType.Right, UpLo.Lower, TransType.OnlyTrans, DiagType.NonUnit,
                 1, a11, a21);
-            SyRk(UpLo.Lower, TransType.NoTrans, -1, a21, 1, a22);
-            block = Math.Min(BlockSize, a22.Rows);
+            SyRk(UpLo.Lower, TransType.NoTrans, -1, a21, 1, A22);
         }
     }
 
     internal static void CholeskyUpperUnblock(MatrixView A)
     {
-        var partA = PartitionGrid.Create
-            (A, 0, 0, Quadrant.TopLeft,
-            out var a00, out var a01, out var a02,
-            out var a10, out var a11, out var a12,
-            out var a20, out var a21, out var a22);
+        if (A.IsEmpty) return;
 
-        while (a22.Rows > 0)
+        for (var i = 0; i < A.Rows; i++)
         {
-            using var partAStep = partA.Step();
+            ref var alpha11 = ref A[i, i];
+            var a01 = A[..i, i];
+            var A02 = A[..i, (i + 1)..];
+            var a12 = A[i, (i + 1)..];
 
-            ref var alpha11 = ref a11.GetHeadRef();
-            var a01v = a01.GetColumn(0);
-            var a12t = a12.GetRow(0);
-            var a02t = a02.T;
-
-            // alpha11 -= a01' * a01
-            alpha11 -= a01v * a01v;
+            alpha11 -= a01 * a01;
             alpha11 = Math.Sqrt(alpha11);
             // a12' -= A02' * a01v
-            GeMV(-1, a02t, a01v, 1, a12t);
+            //GeMV(-1, A02.T, a01, 1, a12);
+            a01.LeftMul(-1.0, A02, 1.0, a12);
             // a12t /= sqrt(alpha11)
-            InvScal(alpha11, a12t);
+            a12.InvScaled(alpha11);
+
+            //alpha11 -= a01.SumSq();
+            //Sqrt(ref alpha11);
+            //a01.LeftMul(-1, A02, 1, a12);
+            //a12.InvScaled(alpha11);
         }
     }
 
@@ -203,10 +192,10 @@ public class Cholesky
             out var A00, out var a01, out var A02,
             out var a10, out var a11, out var a12,
             out var A20, out var a21, out var A22);
-        int block = Math.Min(BlockSize, A22.Rows);
 
-        while (block > 0)
+        while (A22.Rows > 0)
         {
+            var block = Math.Min(BlockSize, A22.Rows);
             using var partAStep = partA.Step(block, block);
 
             // A11 = chol( A11 )
@@ -215,8 +204,6 @@ public class Cholesky
             TrSM(SideType.Left, UpLo.Upper, TransType.OnlyTrans, DiagType.NonUnit, 1, a11, a12);
             // A22 -= A12' * A12
             SyRk(UpLo.Upper, -1, a12.T, 1, A22);
-
-            block = Math.Min(BlockSize, A22.Rows);
         }
     }
 
@@ -238,8 +225,14 @@ public class Cholesky
         }
     }
 
-    internal static void CholeskyInverse(MatrixView A, MatrixView I)
+    private static void Sqrt(ref double alpha)
     {
-        A.CopyTo(I);
+        if (alpha <= 0)
+            throw new LinalgException("Cholesky",
+                "Warning: Cholesky factorization " +
+                "encountered A non-positive pivot" +
+                $"with value {alpha}.");
+        alpha = Math.Sqrt(alpha);
     }
+
 }

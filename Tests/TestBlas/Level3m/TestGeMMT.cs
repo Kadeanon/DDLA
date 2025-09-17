@@ -101,7 +101,7 @@ public class TestGeMMT
         var expected = CopyMatrix(result);
         int size = left.Rows;
         BlasProvider.GeMM(alpha, left, right, beta, expected);
-        BlasProvider.GeMMt(uplo, alpha, left, right, beta, result);
+        BlasProvider.GeMMT(uplo, alpha, left, right, beta, result);
         BlasProvider.Sub(DiagType.NonUnit,
             uplo, TransType.NoTrans, expected, result);
         for (int i = 0; i < size; i++)
