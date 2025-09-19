@@ -12,11 +12,12 @@ namespace DDLA.Factorizations;
 
 public class LU
 {
-    readonly MatrixView matrix;
-    internal readonly int[]? pivs;
-    internal readonly int n;
-    internal bool computed;
-    internal Matrix? inverse;
+    MatrixView matrix;
+    readonly int[]? pivs;
+    readonly int n;
+    bool computed;
+    Matrix? inverse;
+    bool deconstructed;
 
     public Matrix Inverse
     {
@@ -44,6 +45,9 @@ public class LU
 
     private void ComputeOnce()
     {
+        if (deconstructed)
+            throw new InvalidOperationException(
+                "Matrix has been deconstructed, cannot compute again.");
         if (computed)
             return;
         if (pivs == null)
@@ -57,40 +61,42 @@ public class LU
         computed = true;
     }
 
-    public VectorView Solve(VectorView b, bool trans = false, bool inplace = false)
+    public Vector Solve(VectorView b, bool trans = false, bool inplace = false)
     {
         ComputeOnce();
         if (b.Length != n)
             throw new ArgumentException("RHS vector size mismatch", nameof(b));
-        var x = inplace ? b : b.Clone();
+        if (!inplace)
+            b = b.Clone();
         if (pivs == null)
         {
-            LUSolve(matrix, new(x), trans);
+            LUSolve(matrix, new(b), trans);
         }
         else
         {
-            PLUSolve(matrix, pivs, new(x));
+            PLUSolve(matrix, pivs, new(b));
         }
 
-        return x;
+        return new(b);
     }
 
-    public MatrixView Solve(MatrixView B, bool trans = false, bool inplace = false)
+    public Matrix Solve(MatrixView B, bool trans = false, bool inplace = false)
     {
         ComputeOnce();
         if (B.Rows != n)
             throw new ArgumentException("RHS vector size mismatch", nameof(B));
-        var x = inplace ? B : B.Clone();
+        if (!inplace)
+            B = B.Clone();
         if (pivs == null)
         {
-            LUSolve(matrix, x, trans);
+            LUSolve(matrix, B, trans);
         }
         else
         {
-            PLUSolve(matrix, pivs, x);
+            PLUSolve(matrix, pivs, B, trans);
         }
 
-        return x;
+        return new(B);
     }
 
     [MemberNotNull(nameof(inverse))]
@@ -117,6 +123,8 @@ public class LU
 
         U = new(matrix);
         MakeTr(U, UpLo.Upper);
+
+        deconstructed = true;
     }
 
     #region LU without pivoting

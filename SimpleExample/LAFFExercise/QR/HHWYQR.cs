@@ -1,6 +1,6 @@
-﻿using DDLA.BLAS;
-using DDLA.Misc.Flags;
-using System.Diagnostics;
+﻿using DDLA.Misc.Flags;
+
+using static DDLA.BLAS.BlasProvider;
 
 namespace SimpleExample.LAFFExercise.QR;
 
@@ -14,131 +14,146 @@ public class HHWYQR(Matrix A) : QRBase(A)
 
     public const int MaxBlockSize = 4;
 
+    public VectorView Taus {get; } = Vector.Create(Math.Min(A.Rows, A.Cols));
+
+    public int BlockSize { get; }
+        = Math.Min(MaxBlockSize, A.Cols);
+
     public override void Kernel()
     {
-        int m = this.A.Rows;
-        int n = this.A.Cols;
-        this.R = Matrix.Create(n, n);
-        Q = this.A;
+        var S = Matrix.Create(BlockSize, A.Cols);
+        QRBlock(A, S);
 
-        var R = this.R.View;
-        var A = this.A.View;
+        Q = A.EmptyLike();
+        Q.ShiftDiag(1);
 
-        var blksz = Math.Min(MaxBlockSize, n);
-        var S = Matrix.Create(m, blksz).View;
-        var Work = Matrix.Create(m, blksz).View;
-        for(int i = 0; i < n; i += blksz)
-        {
-            var block = Math.Min(blksz, n - i);
-            var A1 = A[i.., i..(i + block)];
-            var A2 = A[i.., (i + block)..];
+        // Q = H_{0} H_{1} ... H_{k-1}
+        var W = Matrix.Create(BlockSize, Q.Cols);
+        ApplyQ(A, S, W, Q);
 
-            var S1 = S[i..(i + block), ..block];
-            UnblockHH(A1, S1);
-            UpdateRight(A1, S1, A2, Work);
-        }
-        for (int j = 0; j < n; j++)
-        {
-            var r01 = R[..j, j];
-            ref var r11 = ref R[j, j];
-            var u01 = A[..j, j]; 
-            ref var u11 = ref A[j, j];
-            u01.CopyTo(r01);
-            r11 = u11;
-            u01.Fill(0);
-            u11 = 1.0;
-        }
-
-        throw new NotImplementedException();
-        var W = S.Multify(A.T);
-        BlasProvider.TrMM(SideType.Right, UpLo.Upper, -1.0, W, A);
-        A.ShiftDiag(1.0);
+        R = new(A[..A.Cols, ..]);
+        Set(DiagType.Unit, UpLo.Lower, 0.0, A);
     }
 
-    private static void UnblockHH(MatrixView A, MatrixView S)
+    internal static void QRUnblock(MatrixView A, MatrixView S)
     {
-        int n = A.Cols;
-        for (int j = 0; j < n; j++)
+        for (int i = 0; i < A.MinDim; i++)
         {
-            // Build HH to zero out entries below the diagonal in column j
+            ref var tau = ref S[i, i];
+            var Ab1 = A[i.., i];
+            var Ab2 = A[i.., (i + 1)..];
 
-            var S00 = S[..j, ..j];
-            var s01 = S[..j, j];
-            ref var s11 = ref S[j, j];
+            var S00 = S[..i, ..i];
+            var s01 = S[..i, i];
+            var a10 = A[i, ..i];
+            var a21 = A[(i + 1).., i];
+            var A20 = A[(i + 1).., ..i];
 
-            var u10 = A[j, ..j];
-            ref var u11 = ref A[j, j];
-            var U20 = A[(j + 1).., ..j];
-            var u21 = A[(j + 1).., j];
+            HHQR.BuildHH(Ab1, out tau);
+            HHQR.ApplyHH(Ab1, Ab2, tau);
 
-            var xSq = u21.SumSq();
-            var alphaSq = u11 * u11 + xSq;
-            var alpha = Math.Sqrt(alphaSq);
-            var rho = -Math.Sign(u11) * alpha;
-            var miu = 1 / (u11 - rho);
-            u11 = rho;
-            u21.Scaled(miu);
-            s11 = 2 / (1 + xSq * miu * miu);
-            u21.LeftMul(U20, output: s01);
-            s01.Added(u10);
-            BlasProvider.TrMV(UpLo.Upper, -s11, S00, s01);
+            tau = 1 / tau;
+            a10.CopyTo(s01);
+            a21.LeftMul(A20, 1.0, s01);
+            TrMV(UpLo.Upper, TransType.NoTrans, DiagType.NonUnit,
+                -tau, S00, s01);
+        }
+    }
 
+    internal static void QRBlock(MatrixView A, MatrixView S)
+    {
+        int iNext = 0;
 
-            // Apply HH to remaining columns
-            for (var col = j + 1; col < n; col++)
+        for (var i = 0; i < A.MinDim; i = iNext)
+        {
+            iNext = Math.Min(i + MaxBlockSize, A.MinDim);
+
+            var S1 = S[.., i..iNext];
+            var AB1 = A[i.., i..iNext];
+            var AB2 = A[i.., iNext..];
+
+            QRUnblock(AB1, S1);
+            ApplyQT(AB1, S1, S[.., iNext..], AB2);
+        }
+    }
+
+    internal static void ApplyQT(MatrixView A, MatrixView S, MatrixView W, MatrixView Q)
+    {
+        int block = S.Rows;
+
+        for (int aLeft = 0; aLeft < A.MinDim; aLeft += block)
+        {
+            block = Math.Min(block, A.MinDim - aLeft);
+            var aRight = aLeft + block;
+
+            ApplyQStep(A[aLeft.., aLeft..aRight],
+                S[aLeft..aRight, ..block], W[..block, ..],
+                Q[aLeft.., ..], trans: true);
+        }
+    }
+
+    internal static void ApplyQ(MatrixView A, MatrixView S, MatrixView W, MatrixView Q)
+    {
+        var aLeft = A.MinDim;
+        var aRight = A.MinDim;
+
+        bool left = A.Cols % Math.Min(S.Rows, A.Cols) > 0;
+        while (aLeft > 0)
+        {
+            var block = Math.Min(S.Rows, aLeft);
+            if (left)
             {
-                ref var a12 = ref A[j, col];
-                var a22 = A[(j + 1).., col];
-
-                var w = a12 + u21 * a22;
-                w *= s11;
-                a12 -= w;
-                a22.Added(-w, u21);
+                block = A.Cols % block;
+                left = false;
             }
+
+            aLeft -= block;
+
+            ApplyQStep(A[aLeft.., aLeft..aRight],
+                S[..block, aLeft..aRight], W[..block, ..], 
+                Q[aLeft.., ..], trans: false);
+
+            aRight -= block;
         }
     }
 
-    private static void UpdateRight(MatrixView U0, MatrixView S, MatrixView U1, MatrixView Work)
+    internal static void ApplyQStep(MatrixView A, MatrixView S, MatrixView W, MatrixView Q, bool trans)
     {
-        var n1 = U1.Cols;
-        if (n1 == 0) return;
-        var n = U0.Cols;
+        var block = A.Cols;
+        var A11 = A[..block, ..];
+        var A21 = A[block.., ..];
+        var B1 = Q[..block, ..];
+        var B2 = Q[block.., ..];
 
-        var block = Math.Min(n, n1);
-        for (int j = 0; j < n1; j += block)
-        {
-            block = Math.Min(block, n1 - j);
-            UpdateRightBlock(U0, S, U1[.., j..(j + block)], Work[..n, ..block]);
-        }
-    }
+        // B -= A * S * A^T * B
 
-    private static void UpdateRightBlock(MatrixView U0, MatrixView S, MatrixView U1, MatrixView Work)
-    {
-        var m = U0.Rows;
-        var n = U0.Cols;
-        var n1 = U1.Cols;
+        B1.CopyTo(W);
 
-        var U00 = U0[..n, ..];
-        var U10 = U0[n.., ..];
-        var U01 = U1[..n, ..];
-        var U11 = U1[n.., ..];
+        // X = A^T * B
+        // LEFT: B -= A * S * X
 
-        //Work = U01
-        U01.CopyTo(Work);
-        //Work = (tril(U10))^T * U00
-        BlasProvider.TrMM(SideType.Left, UpLo.Lower,
+        // X = A^T * B = A11^T * B1 + A21^T * B2
+        TrMM(SideType.Left, UpLo.Lower,
             TransType.OnlyTrans, DiagType.Unit,
-            1.0, U00, Work);
-        //Work += U11^T * U10
-        BlasProvider.GeMM(TransType.OnlyTrans, TransType.NoTrans,
-            1.0, U10, U11, 1.0, Work);
-        //Work = S * Work
-        BlasProvider.TrMM(SideType.Left, UpLo.Upper,
-            TransType.NoTrans, DiagType.NonUnit,
-            1.0, S, Work);
-        //U01 -= U00 * Work
-        BlasProvider.GeMM(-1.0, U00, Work, 1.0, U01);
-        //U11 -= U10 * Work
-        BlasProvider.GeMM(-1.0, U10, Work, 1.0, U11);
+            1, A11, W);
+        A21.T.Multify(1, B2, 1, W);
+
+        // Y = S * X
+        // LEFT: B -= A * Y
+        TrMM(SideType.Left, UpLo.Upper,
+            trans ? TransType.OnlyTrans : TransType.NoTrans,
+            DiagType.NonUnit,
+            1, S, W);
+
+        // B -= A * Y
+        // B2 -= A21 * Y
+        A21.Multify(-1, W, 1, B2);
+
+        // B1 -= A11 * Y 
+        TrMM(SideType.Left, UpLo.Lower,
+            TransType.NoTrans, DiagType.Unit,
+            1, A11, W);
+
+        B1.SubtractedBy(W);
     }
 }

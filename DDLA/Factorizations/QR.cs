@@ -15,6 +15,80 @@ public class QR
 {
     internal static int BlockSize = 256;
 
+    readonly MatrixView matrix;
+    readonly MatrixView aux;
+    bool computed;
+    bool deconstructed;
+
+    public QR(MatrixView mat, bool inplace = false)
+    {
+        if (inplace)
+            matrix = mat;
+        else
+            matrix = mat.Clone();
+
+        aux = CreateT(matrix);
+        computed = false;
+    }
+
+    public void ComputeOnce()
+    {
+        if (deconstructed)
+            throw new InvalidOperationException(
+                "Matrix has been deconstructed, cannot compute again.");
+        if (computed)
+            return;
+        computed = true;
+        QRDecompose(matrix, aux);
+    }
+
+    public Vector Solve(VectorView B, VectorView? output = null)
+    {
+        ComputeOnce();
+        if (output is VectorView X)
+        {
+            if (X.Length != matrix.Cols)
+                throw new ArgumentException(
+                    "Output matrix has incorrect dimensions.");
+        }
+        else
+        {
+            X = Vector.Create(matrix.Cols);
+        }
+        Solve(matrix, aux, new(B), new(X));
+        return new(X);
+    }
+
+    public Matrix Solve(MatrixView B, MatrixView? output = null)
+    {
+        ComputeOnce(); 
+        if(output is MatrixView X)
+        {
+            if (X.Rows != matrix.Cols || X.Cols != B.Cols)
+                throw new ArgumentException(
+                    "Output matrix has incorrect dimensions.");
+        }
+        else
+        {
+            X = Matrix.Create(matrix.Cols, B.Cols);
+        }
+        Solve(matrix, aux, B, X);
+        return new(X);
+    }
+
+    public void Deconstruct(out Matrix Q, out Matrix R)
+    {
+        ComputeOnce();
+
+        Q = Matrix.Eyes(matrix.Rows);
+        FormQ(matrix, aux, Q);
+
+        R = new(matrix);
+        Set(DiagType.Unit, UpLo.Lower, 0.0, matrix);
+
+        deconstructed = true;
+    }
+
     public static Matrix CreateT(MatrixView A)
     {
         int block = Math.Min(BlockSize, A.MaxDim);
@@ -40,11 +114,6 @@ public class QR
             QRDecBlock(A, T);
         else
             QRDecUnblock(A, T);
-    }
-
-    public static void QRRecoverTaus(MatrixView T, MatrixView tau)
-    {
-        throw new NotImplementedException("QRDecompose is not implemented in this provider.");
     }
 
     public static void Solve(MatrixView A, MatrixView T,
@@ -301,11 +370,10 @@ public class QR
         YT.CopyTo(X);
     }
 
-
     /// <summary>
-    /// Apply a transpose of a unitary matrix Q to matrix B from the left: B := Q' B, <para />
+    /// Apply a transpose of a unitary matrix Q to matrix B from the left: B := Q' B, 
     /// where Q is the forward product of Householder transformations,
-    /// and H(i) corresponds to the householder vector stored below the diagonal<para />
+    /// and H(i) corresponds to the householder vector stored below the diagonal
     /// in the ith column of A.
     /// </summary>
     /// <param name="A">Matrix A, which storage the householder vectors

@@ -22,9 +22,9 @@ public class HHQR(Matrix A)
         {
             ref var tau = ref taus[j];
             // Build HH to zero out entries below the diagonal in column j
-            BuildHH(A, j, j, out tau);
+            BuildHH(A[j.., j], out tau);
             // Apply HH to remaining columns
-            ApplyHH(A, j, j, j + 1, n, tau);
+            ApplyHH(A[j.., j], A[j.., (j + 1)..], tau);
         }
         // Extract R from modified A
         // TODO: Use Copy with Uplo
@@ -37,11 +37,11 @@ public class HHQR(Matrix A)
         FormQ(A, taus);
     }
 
-    private static void BuildHH(MatrixView A, int i, int j,
+    internal static void BuildHH(VectorView A,
         out double tau)
     {
-        ref double a11 = ref A[i, j];
-        var A21 = A[(i + 1).., j];
+        ref double a11 = ref A[0];
+        var A21 = A[1..];
         double xSq = A21.SumSq();
         double alphaSq = a11 * a11 + xSq;
         double alpha = Math.Sqrt(alphaSq);
@@ -53,20 +53,19 @@ public class HHQR(Matrix A)
         tau /= 2;
     }
 
-    private static void ApplyHH(MatrixView A, int i, int j,
-        int colStart, int colEnd, double tau)
+    internal static void ApplyHH(VectorView A, MatrixView A2, double tau)
     {
-        var a21 = A[(i + 1).., j];
+        var a21 = A[1..];
 
-        for (var col = colStart; col < colEnd; col++)
+        for (var col = 0; col < A2.Cols; col++)
         {
-            ref var a12 = ref A[i, col];
-            var a22 = A[(i + 1).., col];
+            ref var a12 = ref A2[0, col];
+            var a22 = A2[1.., col];
 
             var w = a12 + a21 * a22;
             w /= tau;
             a12 -= w;
-            a22.Added(-w, a21);
+            a22.AddedBy(-w, a21);
         }
     }
 

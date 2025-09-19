@@ -7,8 +7,8 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        int rows = 10;
-        int cols = rows;
+        int cols = 407;
+        int rows = cols + 4;
         TestQRFamily(rows, cols);
     }
 
@@ -33,11 +33,19 @@ internal class Program
         Console.WriteLine();
         Console.WriteLine();
 
-        //Console.WriteLine("~~~~~~~~Householder WY~~~~~~~~");
-        //var hhwy = new HHWYQR(A);
-        //TestQR(hhwy);
-        //Console.WriteLine();
-        //Console.WriteLine();
+        // HHUT or HHWY is slower than HH because of the extra cost of forming compacted matrices.
+
+        Console.WriteLine("~~~~~~~~Householder UT~~~~~~~~");
+        var hhut = new HHUTQR(A);
+        TestQR(hhut);
+        Console.WriteLine();
+        Console.WriteLine();
+
+        Console.WriteLine("~~~~~~~~Householder WY~~~~~~~~");
+        var hhwy = new HHWYQR(A);
+        TestQR(hhwy);
+        Console.WriteLine();
+        Console.WriteLine();
     }
 
     static void TestQR(QRBase qr)
@@ -50,8 +58,12 @@ internal class Program
         //Console.WriteLine($"Q:\n{Q}");
         //Console.WriteLine($"R:\n{R}");
         var A_reconstructed = Q * R;
+        var i = Q.Transpose() * Q;
+        i.ShiftDiag(-1);
+        Console.WriteLine($"nrm2(Q^T * Q - I):" +
+            $"{i.NrmF()}");
         //Console.WriteLine($"Q*Q^T:\n" +
-        //    $"{Q * Q.Transpose()}");
+        //   $"{Q * Q.Transpose()}");
         //Console.WriteLine("A reconstructed(Q*R):\n" +
         //    $"{A_reconstructed}");
         var diff = A_reconstructed - A;

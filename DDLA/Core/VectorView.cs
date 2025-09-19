@@ -340,19 +340,19 @@ public readonly struct VectorView
         return result;
     }
 
-    public readonly void Added(VectorView other) => 
+    public readonly void AddedBy(VectorView other) => 
         BlasProvider.Add(other, this);
 
-    public readonly void Added(double alpha, VectorView other) =>
+    public readonly void AddedBy(double alpha, VectorView other) =>
         BlasProvider.Axpy(alpha, other, this);
 
-    public readonly void Added(VectorView other, double beta) =>
+    public readonly void AddedBy(VectorView other, double beta) =>
         BlasProvider.Xpby(other, beta, this);
 
-    public readonly void Added(double alpha, VectorView other, double beta) =>
+    public readonly void AddedBy(double alpha, VectorView other, double beta) =>
         BlasProvider.Axpby(alpha, other, beta, this);
 
-    public readonly void Subtracted(VectorView other) =>
+    public readonly void SubtractedBy(VectorView other) =>
         BlasProvider.Sub(other, this);
 
     public readonly double Dot(VectorView other) =>
@@ -370,7 +370,6 @@ public readonly struct VectorView
 
     public readonly VectorView LeftMul(MatrixView right, VectorView? output = null)
     {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Rows, Length, nameof(right));
         var result = output ?? Create(right.Cols, uninited:true);
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             1.0, right, this, 0.0, result);
@@ -386,7 +385,6 @@ public readonly struct VectorView
 
     public readonly VectorView LeftMul(double alpha, MatrixView right, VectorView? output = null)
     {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Cols, Length, nameof(right));
         var result = output ?? Create(right.Rows, uninited: true);
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             alpha, right, this, 0.0, result);

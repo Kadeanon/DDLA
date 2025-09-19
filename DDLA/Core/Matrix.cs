@@ -31,6 +31,12 @@ public class Matrix : IEnumerable<double>
 
     public int ColStride { get; internal set; }
 
+    public int DiagOffset { get; }
+
+    public int MinDim => Math.Min(Rows, Cols);
+
+    public int MaxDim => Math.Max(Rows, Cols);
+
     public SingleIndice RowIndice => new SingleIndice(Rows, RowStride);
 
     public SingleIndice ColIndice => new SingleIndice(Cols, ColStride);
@@ -40,7 +46,7 @@ public class Matrix : IEnumerable<double>
     public int Size => Rows * Cols;
 
     public MatrixView View => new(Data, Offset,
-        Rows, Cols, RowStride, ColStride);
+        Rows, Cols, RowStride, ColStride, DiagOffset);
     #endregion Properties
 
     #region Constructors
@@ -125,7 +131,7 @@ public class Matrix : IEnumerable<double>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Matrix(double[] array, int offset, int rows, int cols,
-        int rowStride, int colStride)
+        int rowStride, int colStride, int diagOffset = 0)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(offset, nameof(offset));
@@ -139,6 +145,7 @@ public class Matrix : IEnumerable<double>
         Cols = cols;
         RowStride = rowStride;
         ColStride = colStride;
+        DiagOffset = diagOffset;
     }
 
 
@@ -151,6 +158,7 @@ public class Matrix : IEnumerable<double>
         Cols = mat.Cols;
         RowStride = mat.RowStride;
         ColStride = mat.ColStride;
+        DiagOffset = mat.DiagOffset;
     }
 
 
@@ -341,11 +349,8 @@ public class Matrix : IEnumerable<double>
         return mat;
     }
 
-    public Matrix EmptyLike()
-        => Create(Rows, Cols, uninited: true);
-
-    public Matrix ZeroLike()
-        => Create(Rows, Cols, uninited: false);
+    public Matrix EmptyLike(bool clear = true)
+        => Create(Rows, Cols, uninited: !clear);
 
     public Matrix FilledLike(double val)
         => Filled(Rows, Cols, val);
@@ -586,6 +591,21 @@ public class Matrix : IEnumerable<double>
         BlasProvider.Set(val, View);
     }
 
+    public void Fill(double val, UpLo upLo, bool ignoreDiag = false)
+    {
+        BlasProvider.Set(ignoreDiag ? DiagType.Unit : DiagType.NonUnit, upLo, val, View);
+    }
+
+    public void Clear()
+    {
+        BlasProvider.Set(0.0, View);
+    }
+
+    public void Clear(UpLo upLo, bool ignoreDiag = false)
+    {
+        BlasProvider.Set(ignoreDiag ? DiagType.Unit: DiagType.NonUnit, upLo, 0.0, View);
+    }
+
     public Matrix Transpose()
     {
         return new Matrix(Data, Offset,
@@ -761,19 +781,50 @@ public class Matrix : IEnumerable<double>
         return dest;
     }
 
-    public Matrix Multify(MatrixView other, Matrix? output = null)
+    public Matrix AddedBy(MatrixView other)
+    {
+        BlasProvider.Add(other, this);
+        return this;
+    }
+
+    public Matrix SubtractedBy(MatrixView other)
+    {
+        BlasProvider.Sub(other, this);
+        return this;
+    }
+
+    public Matrix ScaledBy(double alpha)
+    {
+        BlasProvider.Scal(alpha, this);
+        return this;
+    }
+
+    public Matrix InvScaledBy(double alpha)
+    {
+        BlasProvider.InvScal(alpha, this);
+        return this;
+    }
+
+    public Matrix ScaledTo(double alpha, MatrixView? output = null)
+    {
+        var result = output ?? EmptyLike();
+        BlasProvider.Scal(alpha, result);
+        return new(result);
+    }
+
+    public Matrix Multify(MatrixView other, MatrixView? output = null)
         => Multify(1.0, other, output);
 
-    public Matrix Multify(MatrixView other, double beta, Matrix output)
+    public Matrix Multify(MatrixView other, double beta, MatrixView output)
         => Multify(1.0, other, beta, output);
 
-    public Matrix Multify(double alpha, MatrixView other, Matrix? output = null)
+    public Matrix Multify(double alpha, MatrixView other, MatrixView? output = null)
     {
         var m = Rows;
         var k = Cols;
         ArgumentOutOfRangeException.ThrowIfNotEqual(other.Rows, k, nameof(other));
         var n = other.Cols;
-        if (output is Matrix result)
+        if (output is MatrixView result)
         {
             ArgumentOutOfRangeException.ThrowIfNotEqual(result.Rows, m, nameof(output));
             ArgumentOutOfRangeException.ThrowIfNotEqual(result.Cols, n, nameof(output));
@@ -783,10 +834,10 @@ public class Matrix : IEnumerable<double>
             result = Create(m, n);
         }
         BlasProvider.GeMM(alpha, this, other, 0.0, result);
-        return result;
+        return new(result);
     }
 
-    public Matrix Multify(double alpha, MatrixView other, double beta, Matrix output)
+    public Matrix Multify(double alpha, MatrixView other, double beta, MatrixView output)
     {
         var m = Rows;
         var k = Cols;
@@ -795,21 +846,21 @@ public class Matrix : IEnumerable<double>
         ArgumentOutOfRangeException.ThrowIfNotEqual(output.Rows, m, nameof(output));
         ArgumentOutOfRangeException.ThrowIfNotEqual(output.Cols, n, nameof(output));
         BlasProvider.GeMM(alpha, this, other, beta, output);
-        return output;
+        return new(output);
     }
 
-    public Vector Multify(VectorView other, Vector? output = null)
+    public Vector Multify(VectorView other, VectorView? output = null)
         => Multify(1.0, other, output);
 
-    public Vector Multify(VectorView other, double beta, Vector output)
+    public Vector Multify(VectorView other, double beta, VectorView output)
         => Multify(1.0, other, beta, output);
 
-    public Vector Multify(double alpha, VectorView other, Vector? output = null)
+    public Vector Multify(double alpha, VectorView other, VectorView? output = null)
     {
         var m = Rows;
         var k = Cols;
         ArgumentOutOfRangeException.ThrowIfNotEqual(other.Length, k, nameof(other));
-        if (output is Vector result)
+        if (output is VectorView result)
         {
             ArgumentOutOfRangeException.ThrowIfNotEqual(result.Length, m, nameof(output));
         }
@@ -818,17 +869,17 @@ public class Matrix : IEnumerable<double>
             result = Vector.Create(m);
         }
         BlasProvider.GeMV(alpha, this, other, 0.0, result);
-        return result;
+        return new(result);
     }
 
-    public Vector Multify(double alpha, VectorView other, double beta, Vector output)
+    public Vector Multify(double alpha, VectorView other, double beta, VectorView output)
     {
         var m = Rows;
         var k = Cols;
         ArgumentOutOfRangeException.ThrowIfNotEqual(other.Length, k, nameof(other));
         ArgumentOutOfRangeException.ThrowIfNotEqual(output.Length, m, nameof(output));
         BlasProvider.GeMV(alpha, this, other, beta, output);
-        return output;
+        return new(output);
     }
 
     public void Rank1(VectorView x, VectorView y)

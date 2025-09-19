@@ -48,6 +48,18 @@ public class Vector
         Stride = step;
     }
 
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector(VectorView view)
+    {
+        ArgumentNullException.ThrowIfNull(view.Data, nameof(view));
+
+        Data = view.Data;
+        Offset = view.Offset;
+        Length = view.Length;
+        Stride = view.Stride;
+    }
+
     public static Vector Create(int length, bool uninited = false)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(length, Array.MaxLength, nameof(length));
@@ -351,7 +363,6 @@ public class Vector
 
     public Vector LeftMul(MatrixView right, Vector? output = null)
     {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Cols, Length, nameof(right));
         var result = output ?? Create(right.Rows, uninited: true);
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             1.0, right, this, 0.0, result);
@@ -367,7 +378,6 @@ public class Vector
 
     public Vector LeftMul(double alpha, MatrixView right, Vector? output = null)
     {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(right.Cols, Length, nameof(right));
         var result = output ?? Create(right.Rows, uninited: true);
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
             alpha, right, this, 0.0, result);

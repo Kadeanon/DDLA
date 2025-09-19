@@ -1,4 +1,5 @@
-﻿using static DDLA.Factorizations.QR;
+﻿using DDLA.Factorizations;
+using static DDLA.Factorizations.QR;
 
 namespace Tests.TestFlame;
 
@@ -35,12 +36,11 @@ public class TestQR
         int count = 20;
         for (int i = 0; i < count; i++)
         {
-            MatrixView a = CreateUtils.CreateMatrixRandom(m, n);
-            MatrixView orig = CreateUtils.CreateMatrixRandom(n, nrhs);
+            MatrixView a = CreateMatrixRandom(m, n);
+            MatrixView orig = CreateMatrixRandom(n, nrhs);
             MatrixView b = a * orig;
-            QRDecompose(a, out var t);
-            var result = orig.EmptyLike();
-            Solve(a, t, b, result);
+            var qr = new QR(a);
+            var result = qr.Solve(b);
             var diff = orig - result;
             double n1 = diff.Nrm1(),
                 n2 = diff.NrmF(),
@@ -61,16 +61,8 @@ public class TestQR
         int count = 20;
         for (int i = 0; i < count; i++)
         {
-            MatrixView orig = CreateUtils.CreateMatrixRandom(m, n);
-            MatrixView work = CreateUtils.CopyMatrix(orig);
-            MatrixView t = CreateT(work);
-            QRDecompose(work, t);
-            var r = work.Clone().View;
-            var diag = r.Diag.Clone();
-            BlasProvider.Set(DiagType.NonUnit, UpLo.Lower, 0.0, r);
-            r.Diag = diag;
-            var q = Matrix.Eyes(m);
-            FormQ(work, t, q);
+            MatrixView orig = CreateMatrixRandom(m, n);
+            var (q, r) = new QR(orig);
             var result = q * r;
             var diff = orig - result;
             double n1 = diff.Nrm1(),

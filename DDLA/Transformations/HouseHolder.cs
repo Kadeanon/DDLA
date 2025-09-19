@@ -71,7 +71,7 @@ public static class HouseHolder
     /// <param name="u2">The last part of u.</param>
     /// <param name="a1">The top part of A.</param>
     /// <param name="A2">The bottom part of A.</param>
-    internal static void ApplyHouseHolder(SideType side,
+    public static void ApplyHouseHolder(SideType side,
         ref double tau, VectorView u2, VectorView a1, MatrixView A2)
     {
         if (a1.Length == 0 || tau == 0.0)
@@ -87,7 +87,7 @@ public static class HouseHolder
             //BlasProvider.GeR(-1, u2, w, A2);
             u2.LeftMul(A2, 1.0, w);
             w.InvScaled(tau);
-            a1.Subtracted(w);
+            a1.SubtractedBy(w);
             A2.Rank1(-1.0, u2, w);
 
         }
@@ -99,7 +99,7 @@ public static class HouseHolder
             //BlasProvider.GeR(-1, w, u2, A2);
             A2.Multify(u2, 1.0, w);
             w.InvScaled(tau);
-            a1.Subtracted(w);
+            a1.SubtractedBy(w);
             A2.Rank1(-1.0, w, u2);
         }
     }

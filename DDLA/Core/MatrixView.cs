@@ -53,6 +53,7 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = 1;
         RowStride = 1;
         ColStride = 1;
+        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -68,6 +69,7 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = 1;
         RowStride = 1;
         ColStride = 1;
+        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -84,6 +86,7 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = cols;
         RowStride = cols;
         ColStride = 1;
+        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -102,6 +105,7 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = cols;
         RowStride = cols;
         ColStride = 1;
+        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -120,11 +124,12 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = cols;
         RowStride = rowStride;
         ColStride = 1;
+        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MatrixView(double[] array, int offset, int rows, int cols,
-        int rowStride, int colStride)
+        int rowStride, int colStride, int diagOffset = 0)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(offset, nameof(offset));
@@ -137,6 +142,7 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = cols;
         RowStride = rowStride;
         ColStride = colStride;
+        DiagOffset = diagOffset;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -148,6 +154,7 @@ public readonly struct MatrixView : IEnumerable<double>
         RowStride = vector.Stride;
         Cols = 1;
         ColStride = Rows * vector.Stride;
+        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -162,6 +169,7 @@ public readonly struct MatrixView : IEnumerable<double>
         RowStride = vector.Stride;
         Cols = cols;
         ColStride = rows * vector.Stride;
+        DiagOffset = 0;
     }
     #endregion Constructors
 
@@ -404,6 +412,21 @@ public readonly struct MatrixView : IEnumerable<double>
     public readonly void Fill(double val)
     {
         BlasProvider.Set(val, this);
+    }
+
+    public readonly void Fill(double val, UpLo upLo, bool ignoreDiag = false)
+    {
+        BlasProvider.Set(ignoreDiag ? DiagType.Unit : DiagType.NonUnit, upLo, val, this);
+    }
+
+    public readonly void Clear()
+    {
+        BlasProvider.Set(0.0, this);
+    }
+
+    public readonly void Clear(UpLo upLo, bool ignoreDiag = false)
+    {
+        BlasProvider.Set(ignoreDiag ? DiagType.Unit : DiagType.NonUnit, upLo, 0.0, this);
     }
 
     public readonly void CopyTo(MatrixView other)
@@ -682,13 +705,50 @@ public readonly struct MatrixView : IEnumerable<double>
         return dest;
     }
 
-    public MatrixView Multify(MatrixView other, MatrixView? output = null)
+    public readonly MatrixView AddedBy(MatrixView other)
+    {
+        BlasProvider.Add(other, this);
+        return this;
+    }
+
+    public readonly MatrixView AddedBy(double alpha, MatrixView other)
+    {
+        BlasProvider.Axpy(alpha, other, this);
+        return this;
+    }
+
+    public readonly MatrixView SubtractedBy(MatrixView other)
+    {
+        BlasProvider.Sub(other, this);
+        return this;
+    }
+
+    public readonly MatrixView ScaledBy(double alpha)
+    {
+        BlasProvider.Scal(alpha, this);
+        return this;
+    }
+
+    public readonly MatrixView InvScaledBy(double alpha)
+    {
+        BlasProvider.InvScal(alpha, this);
+        return this;
+    }
+
+    public readonly MatrixView ScaledTo(double alpha, MatrixView? output = null)
+    {
+        var result = output ?? EmptyLike();
+        BlasProvider.Scal(alpha, result);
+        return result;
+    }
+
+    public readonly MatrixView Multify(MatrixView other, MatrixView? output = null)
         => Multify(1.0, other, output);
 
-    public MatrixView Multify(MatrixView other, double beta, MatrixView output)
+    public readonly MatrixView Multify(MatrixView other, double beta, MatrixView output)
         => Multify(1.0, other, beta, output);
 
-    public MatrixView Multify(double alpha, MatrixView other, MatrixView? output = null)
+    public readonly MatrixView Multify(double alpha, MatrixView other, MatrixView? output = null)
     {
         var m = Rows;
         var k = Cols;
@@ -707,7 +767,7 @@ public readonly struct MatrixView : IEnumerable<double>
         return result;
     }
 
-    public MatrixView Multify(double alpha, MatrixView other, double beta, MatrixView output)
+    public readonly MatrixView Multify(double alpha, MatrixView other, double beta, MatrixView output)
     {
         var m = Rows;
         var k = Cols;
@@ -719,13 +779,13 @@ public readonly struct MatrixView : IEnumerable<double>
         return output;
     }
 
-    public VectorView Multify(VectorView other, VectorView? output = null)
+    public readonly VectorView Multify(VectorView other, VectorView? output = null)
         => Multify(1.0, other, output);
 
-    public VectorView Multify(VectorView other, double beta, VectorView output)
+    public readonly VectorView Multify(VectorView other, double beta, VectorView output)
         => Multify(1.0, other, beta, output);
 
-    public VectorView Multify(double alpha, VectorView other, VectorView? output = null)
+    public readonly VectorView Multify(double alpha, VectorView other, VectorView? output = null)
     {
         var m = Rows;
         var k = Cols;
@@ -742,7 +802,7 @@ public readonly struct MatrixView : IEnumerable<double>
         return result;
     }
 
-    public VectorView Multify(double alpha, VectorView other, double beta, VectorView output)
+    public readonly VectorView Multify(double alpha, VectorView other, double beta, VectorView output)
     {
         var m = Rows;
         var k = Cols;
@@ -752,19 +812,19 @@ public readonly struct MatrixView : IEnumerable<double>
         return output;
     }
 
-    public void Rank1(VectorView x, VectorView y)
+    public readonly void Rank1(VectorView x, VectorView y)
         => BlasProvider.GeR(1.0, x, y, this);
 
-    public void Rank1(double alpha, VectorView x, VectorView y)
+    public readonly void Rank1(double alpha, VectorView x, VectorView y)
         => BlasProvider.GeR(alpha, x, y, this);
 
-    public void Rank1(UpLo uplo, VectorView x)
+    public readonly void Rank1(UpLo uplo, VectorView x)
         => BlasProvider.SyR(uplo, 1.0, x, this);
 
-    public void Rank1(UpLo uplo, double alpha, VectorView x)
+    public readonly void Rank1(UpLo uplo, double alpha, VectorView x)
         => BlasProvider.SyR(uplo, alpha, x, this);
 
-    public void Rank1(UpLo uplo, VectorView x, VectorView y)
+    public readonly void Rank1(UpLo uplo, VectorView x, VectorView y)
     {
         if(uplo is UpLo.Dense)
             BlasProvider.GeR(1.0, x, y, this);
@@ -774,7 +834,7 @@ public readonly struct MatrixView : IEnumerable<double>
             throw new ArgumentException($"Matrix c must be upper or lower triangular!");
     }
 
-    public void Rank1(UpLo uplo, double alpha, VectorView x, VectorView y)
+    public readonly void Rank1(UpLo uplo, double alpha, VectorView x, VectorView y)
     {
         if (uplo is UpLo.Dense)
             BlasProvider.GeR(alpha, x, y, this);
@@ -784,13 +844,13 @@ public readonly struct MatrixView : IEnumerable<double>
             throw new ArgumentException($"Matrix c must be upper or lower triangular!");
     }
 
-    public void ShiftDiag(double alpha)
+    public readonly void ShiftDiag(double alpha)
         => BlasProvider.ShiftDiag(alpha, in this); 
     
-    public void SwapCol(int i, int j)
+    public readonly void SwapCol(int i, int j)
         => BlasProvider.Swap(GetColumn(i), GetColumn(j));
 
-    public void SwapRow(int i, int j)
+    public readonly void SwapRow(int i, int j)
         => BlasProvider.Swap(GetRow(i), GetRow(j));
     #endregion Math
 
@@ -806,17 +866,17 @@ public readonly struct MatrixView : IEnumerable<double>
     public readonly MatrixView PointwiseAbs()
         => Pointwise<AbsOperator<double>>();
 
-    public double Nrm1() =>
+    public readonly double Nrm1() =>
         BlasProvider.Nrm1(this);
 
-    public double NrmF() =>
+    public readonly double NrmF() =>
         BlasProvider.NrmF(this);
 
-    public double NrmInf() =>
+    public readonly double NrmInf() =>
         BlasProvider.NrmInf(this);
     #endregion Ufunc
 
-    public override string ToString()
+    public readonly override string ToString()
     {
         using var _ = StringBuilderPool.Borrow(out var sb);
         sb.Append('[');

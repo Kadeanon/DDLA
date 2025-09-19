@@ -1,7 +1,7 @@
 ﻿using DDLA.Core;
 using DDLA.Misc;
 using DDLA.Misc.Flags;
-
+using System.Buffers;
 using static DDLA.BLAS.BlasProvider;
 
 namespace DDLA.Factorizations;
@@ -11,6 +11,7 @@ public class LDLT
     readonly UpLo uplo;
     readonly MatrixView matrix;
     bool computed;
+    bool deconstructed;
 
     public LDLT(UpLo uplo, MatrixView mat, bool inplace = false)
     {
@@ -29,6 +30,9 @@ public class LDLT
 
     public void ComputeOnce()
     {
+        if (deconstructed)
+            throw new InvalidOperationException(
+                "Matrix has been deconstructed, cannot compute again.");
         if (computed)
             return;
         computed = true;
@@ -68,23 +72,22 @@ public class LDLT
         }
     }
 
-    public VectorView Solve(VectorView b, bool inplace = false)
-    {
-        ComputeOnce();
-        var bMat = new MatrixView(b);
-        if (!inplace)
-            bMat = bMat.Clone();
-        LDLTSolve(uplo, matrix, bMat);
-        return bMat.GetColumn(0);
-    }
-
-    public MatrixView Solve(MatrixView b, bool inplace = false)
+    public Vector Solve(VectorView b, bool inplace = false)
     {
         ComputeOnce();
         if (!inplace)
             b = b.Clone();
-        LDLTSolve(uplo, matrix, b);
-        return b;
+        LDLTSolve(uplo, matrix, new(b));
+        return new(b);
+    }
+
+    public Matrix Solve(MatrixView B, bool inplace = false)
+    {
+        ComputeOnce();
+        if (!inplace)
+            B = B.Clone();
+        LDLTSolve(uplo, matrix, B);
+        return new(B);
     }
 
     /// <summary>
@@ -130,6 +133,7 @@ public class LDLT
         L = new(matrix);
         MakeTr(L, uplo);
         SetDiag(1.0, L);
+        deconstructed = true;
     }
 
     internal static int BlockSize = 128;
@@ -160,7 +164,8 @@ public class LDLT
         {
             var rows = A.Rows - BlockSize;
             var cols = Math.Min(rows, BlockSize);
-            Work = Matrix.Create(rows, cols, uninited: true);
+            var tmp = ArrayPool<double>.Shared.Rent(rows * cols);
+            Work = new Matrix(tmp, 0, rows, cols);
         }
 
         var partA = PartitionGrid.Create
@@ -187,6 +192,12 @@ public class LDLT
                 GeMMT(UpLo.Lower,
                     -1, Y21, A21.T, 1.0, A22);
             }
+        }
+
+        if(Work.Data != null)
+        {
+            Work.Clear();
+            ArrayPool<double>.Shared.Return(Work.Data);
         }
     }
 
@@ -216,7 +227,8 @@ public class LDLT
         {
             var cols = A.Cols - BlockSize; 
             var rows = Math.Min(cols, BlockSize);
-            Work = Matrix.Create(rows, cols, uninited: true);
+            var tmp = ArrayPool<double>.Shared.Rent(rows * cols);
+            Work = new Matrix(tmp, 0, rows, cols);
         }
 
         var partA = PartitionGrid.Create
@@ -243,6 +255,12 @@ public class LDLT
                 GeMMT(UpLo.Upper,
                     -1.0, A12.T, Y12, 1.0, A22);
             }
+        }
+
+        if (Work.Data != null)
+        {
+            Work.Clear();
+            ArrayPool<double>.Shared.Return(Work.Data);
         }
     }
 
