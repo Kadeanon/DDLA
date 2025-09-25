@@ -76,6 +76,16 @@ public class Vector
         return new(data);
     }
 
+    public static Vector Random(int length, Random? random = null)
+    {
+        random ??= System.Random.Shared;
+
+        var data = GC.AllocateUninitializedArray<double>(length);
+        for (int i = 0; i < length; i++)
+            data[i] = random.NextDouble();
+        return new(data);
+    }
+
     public ref double this[int index] => ref At(index);
 
     public Vector this[Range range]
@@ -245,6 +255,17 @@ public class Vector
     {
         BlasProvider.Copy(this, other);
     }
+
+    public void CopyTo(Span<double> target)
+        => View.CopyTo(target);
+
+    public void CopyFrom(VectorView other)
+    {
+        BlasProvider.Copy(this, other);
+    }
+
+    public void CopyFrom(ReadOnlySpan<double> source)
+        => View.CopyFrom(source);
 
     public ref double At(int index)
     {

@@ -170,7 +170,7 @@ public partial class MArray
                     $"Symbol '{symbol}' not found in either tensor.");
             }
         }
-        MArray result = MArray.Create(lengthsC);
+        MArray result = Create(lengthsC);
         var indicesC = result.Diagonal(resultSymbol);
         indicesA = indicesA.Where(kvp => kvp.Value.Length > 1).
             ToDictionary();

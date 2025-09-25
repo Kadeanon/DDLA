@@ -76,6 +76,38 @@ public class QR
         return new(X);
     }
 
+    public Vector ApplyQ(VectorView B)
+    {
+        var W = Matrix.Create(aux.Rows, 1);
+        var Y = new MatrixView(B);
+        ApplyQlnfc(matrix, aux, W, Y);
+        return new(B);
+    }
+
+    public Matrix ApplyQ(MatrixView B)
+    {
+        var W = Matrix.Create(aux.Rows, B.MinDim);
+        var Y = B;
+        ApplyQlnfc(matrix, aux, W, Y);
+        return new(B);
+    }
+
+    public Vector ApplyQT(VectorView B)
+    {
+        var W = Matrix.Create(aux.Rows, 1);
+        var Y = new MatrixView(B);
+        ApplyQlhfc(matrix, aux, W, Y);
+        return new(B);
+    }
+
+    public Matrix ApplyQT(MatrixView B)
+    {
+        var W = Matrix.Create(aux.Rows, B.MinDim);
+        var Y = B;
+        ApplyQlhfc(matrix, aux, W, Y);
+        return new(B);
+    }
+
     public void Deconstruct(out Matrix Q, out Matrix R)
     {
         ComputeOnce();
@@ -214,7 +246,7 @@ public class QR
 
             alphA11 = 1 - 1 / tau11;
 
-            BlasProvider.InvScal(-tau11, a21);
+            InvScal(-tau11, a21);
         }
     }
 
@@ -312,7 +344,7 @@ public class QR
             var t01v = t01.GetColumn(0);
             // T01 = A10t' + A20' * A21;
             a10t.CopyTo(t01v);
-            BlasProvider.GeMV(
+            GeMV(
                 1, A20.T, a21v, 1, t01v);
         }
     }
@@ -359,13 +391,13 @@ public class QR
     internal static void SolveUncheck(MatrixView A, MatrixView T,
         MatrixView B, MatrixView X)
     {
-        var W = Matrix.Create(T.Rows, B.MaxDim);
+        var W = Matrix.Create(T.Rows, B.Cols);
         var Y = B.Clone().View;
         ApplyQlhfc(A, T, W, Y);
         Range widRange = ..(A.Cols);
         var AT = A[widRange, ..];
         var YT = Y[widRange, ..];
-        BlasProvider.TrSM(SideType.Left, UpLo.Upper,
+        TrSM(SideType.Left, UpLo.Upper,
             1, AT, YT);
         YT.CopyTo(X);
     }
@@ -382,7 +414,7 @@ public class QR
     /// in its strictly upper triangle.</param>
     /// <param name="W">The workspace matrix.</param>
     /// <param name="B">The target matrix B.</param>
-    internal static void ApplyQlhfc(MatrixView A, MatrixView T, MatrixView W, MatrixView B)
+    public static void ApplyQlhfc(MatrixView A, MatrixView T, MatrixView W, MatrixView B)
     {
 
         int block = T.Rows;
@@ -434,7 +466,7 @@ public class QR
         }
     }
 
-    internal static void ApplyQlnfc(MatrixView A, MatrixView T, MatrixView W, MatrixView B)
+    public static void ApplyQlnfc(MatrixView A, MatrixView T, MatrixView W, MatrixView B)
     {
         int block = T.Rows;
         int b;

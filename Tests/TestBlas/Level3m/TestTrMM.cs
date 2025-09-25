@@ -197,7 +197,7 @@ public class TestTrMM
         var x = CreateMatrixRandom
             (length, length);
         var y = x.Clone();
-        var y2 = y.ZeroLike();
+        var y2 = y.EmptyLike();
         for (int i = 0; i < length; i++)
         {
             a[i, i] = (0.5 + length) * (a[i, i] + 1);

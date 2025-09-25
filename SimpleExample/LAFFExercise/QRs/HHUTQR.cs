@@ -1,8 +1,7 @@
 ﻿using DDLA.Misc.Flags;
-
 using static DDLA.BLAS.BlasProvider;
 
-namespace SimpleExample.LAFFExercise.QR;
+namespace SimpleExample.LAFFExercise.QRs;
 
 /// <summary>
 /// Blocked Householder QR factorization

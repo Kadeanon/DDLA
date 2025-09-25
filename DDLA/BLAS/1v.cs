@@ -25,7 +25,7 @@ public static partial class BlasProvider
     public static int AMax(in vector x)
     {
         int length = x.Length;
-        if (length == 0) return -1;
+        if (length == 0) return 0;
         Source.Amax(length, ref x.GetHeadRef(), x.Stride, out var indexDim);
         return (int)indexDim;
     }

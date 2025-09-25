@@ -112,7 +112,7 @@ public readonly struct VectorView
         return target;
     }
 
-    internal readonly ref double GetHeadRef()
+    public readonly ref double GetHeadRef()
     {
         if (IsEmpty)
             return ref Unsafe.NullRef<double>();
@@ -233,15 +233,51 @@ public readonly struct VectorView
 
     public readonly void CopyTo(VectorView other)
     {
-        ArgumentOutOfRangeException.
-            ThrowIfLessThan(other.Length, Length, nameof(other));
-        ref double current = ref GetHeadRef();
-        ref double otherCurrent = ref other.GetHeadRef();
-        for (int i = 0; i < Length; i++)
+        BlasProvider.Copy(this, other);
+    }
+
+    public readonly void CopyTo(Span<double> target)
+    {
+        if (target.Length < Length)
+            throw new ArgumentException("Error: target length should be greater than source length.", nameof(target));
+        ref double current = ref Data[Offset];
+        int length = Length;
+        if (Stride == 1)
         {
-            otherCurrent = current;
+            MemoryMarshal.CreateSpan(ref current, length).CopyTo(target);
+            return;
+        }
+        ref double targetCurrent = ref MemoryMarshal.GetReference(target);
+        for (int i = 0; i < length; i++)
+        {
+            targetCurrent = current;
             current = ref Unsafe.Add(ref current, Stride);
-            otherCurrent = ref Unsafe.Add(ref otherCurrent, other.Stride);
+            targetCurrent = ref Unsafe.Add(ref targetCurrent, 1);
+        }
+    }
+
+    public readonly void CopyFrom(VectorView other)
+    {
+        BlasProvider.Copy(other, this);
+    }
+
+    public readonly void CopyFrom(ReadOnlySpan<double> source)
+    {
+        if (source.Length < Length)
+            throw new ArgumentException("Error: source length should be greater than target length.", nameof(source));
+        ref double current = ref Data[Offset];
+        int length = Length;
+        if (Stride == 1)
+        {
+            source[..length].CopyTo(MemoryMarshal.CreateSpan(ref current, length));
+            return;
+        }
+        ref double sourceCurrent = ref MemoryMarshal.GetReference(source);
+        for (int i = 0; i < length; i++)
+        {
+            current = sourceCurrent;
+            current = ref Unsafe.Add(ref current, Stride);
+            sourceCurrent = ref Unsafe.Add(ref sourceCurrent, 1);
         }
     }
 
@@ -407,7 +443,7 @@ public readonly struct VectorView
     public double NrmInf() =>
         BlasProvider.NrmInf(this);
 
-    public readonly double Max() =>
+    public readonly double MaxAbs() =>
         BlasProvider.NrmInf(this);
 
     public readonly double SumSq() 

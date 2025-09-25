@@ -111,7 +111,7 @@ public class TestChol
             var X = CreateMatrixRandom
                 (len, medium).View;
             var B = A * X;
-            var XSolve = new Cholesky(UpLo.Lower, A).Solve(B);
+            var XSolve = new Cholesky(A, UpLo.Lower).Solve(B);
             var diff = XSolve - X;
             double n1 = diff.Nrm1(),
                 n2 = diff.NrmF(),
@@ -142,7 +142,7 @@ public class TestChol
             var X =
                 CreateMatrixRandom(large, medium).View;
             var B = A * X;
-            var XSolve = new Cholesky(UpLo.Upper, A).Solve(B);
+            var XSolve = new Cholesky(A, UpLo.Upper).Solve(B);
             var diff = XSolve - X;
             double n1 = diff.Nrm1(),
                 n2 = diff.NrmF(),

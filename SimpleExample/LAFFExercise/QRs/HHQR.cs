@@ -1,4 +1,4 @@
-﻿namespace SimpleExample.LAFFExercise.QR;
+﻿namespace SimpleExample.LAFFExercise.QRs;
 
 /// <summary>
 /// Unblocked Householder QR

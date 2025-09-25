@@ -824,25 +824,11 @@ public readonly struct MatrixView : IEnumerable<double>
     public readonly void Rank1(UpLo uplo, double alpha, VectorView x)
         => BlasProvider.SyR(uplo, alpha, x, this);
 
-    public readonly void Rank1(UpLo uplo, VectorView x, VectorView y)
-    {
-        if(uplo is UpLo.Dense)
-            BlasProvider.GeR(1.0, x, y, this);
-        else if(uplo is UpLo.Upper or UpLo.Lower)
-            BlasProvider.SyR(uplo, 1.0, x, this);
-        else
-            throw new ArgumentException($"Matrix c must be upper or lower triangular!");
-    }
+    public readonly void Rank2(UpLo uplo, VectorView x, VectorView y)
+        => BlasProvider.SyR2(uplo, 1.0, x, y, this);
 
-    public readonly void Rank1(UpLo uplo, double alpha, VectorView x, VectorView y)
-    {
-        if (uplo is UpLo.Dense)
-            BlasProvider.GeR(alpha, x, y, this);
-        else if (uplo is UpLo.Upper or UpLo.Lower)
-            BlasProvider.SyR(uplo, alpha, x, this);
-        else
-            throw new ArgumentException($"Matrix c must be upper or lower triangular!");
-    }
+    public readonly void Rank2(UpLo uplo, double alpha, VectorView x, VectorView y)
+        => BlasProvider.SyR2(uplo, alpha, x, y, this);
 
     public readonly void ShiftDiag(double alpha)
         => BlasProvider.ShiftDiag(alpha, in this); 

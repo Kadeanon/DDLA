@@ -13,7 +13,7 @@ public class Cholesky
     readonly MatrixView matrix;
     bool computed;
 
-    public Cholesky(UpLo uplo, MatrixView mat, bool inplace = false)
+    public Cholesky(MatrixView mat, UpLo uplo = UpLo.Lower, bool inplace = false)
     {
         this.uplo = uplo;
         CheckSymmMatLength(mat, uplo);
@@ -68,23 +68,23 @@ public class Cholesky
         }
     }
 
-    public VectorView Solve(VectorView b, bool inplace = false)
+    public Vector Solve(VectorView b, bool inplace = false)
     {
         ComputeOnce();
         var bMat = new MatrixView(b);
         if (!inplace)
             bMat = bMat.Clone();
         CholeskySolve(uplo, matrix, bMat);
-        return bMat.GetColumn(0);
+        return new(bMat.GetColumn(0));
     }
 
-    public MatrixView Solve(MatrixView b, bool inplace = false)
+    public Matrix Solve(MatrixView b, bool inplace = false)
     {
         ComputeOnce();
         if (!inplace)
             b = b.Clone();
         CholeskySolve(uplo, matrix, b);
-        return b;
+        return new(b);
     }
 
     /// <summary>
