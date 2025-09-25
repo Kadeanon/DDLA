@@ -32,36 +32,35 @@ public class HHUTTradiag: TridiagBase
         var partT = PartitionHorizontal.Create
             (T, 0, SideType.Left,
             out var T0, out var T1, out var T2);
-
+        int index = 0;
         while (A22.Rows > 0)
         {
             int block = Math.Min(T.Rows, A22.Rows);
+            var indexNext = index + block;
             var ABR = A22;
             using var partAStep = partA.Step(block, block);
             using var partTStep = partT.Step(block);
 
-            Step(ABR, T1[..block, ..]);
-
+            var subDiagEnd = Math.Min(indexNext, SubDiag.Length);
+            var d = Diag[index..indexNext];
+            var e = SubDiag[index..subDiagEnd];
+            Step(ABR, T1[..block, ..], d, e);
+            index = indexNext;
         }
-        for (int i = 0; i < Diag.Length - 1; i++)
-        {
-            Diag[i] = Work[i, i];
-            SubDiag[i] = Work[i + 1, i];
-        }
-        Diag[^1] = Work[^1, ^1];
         FormQ(Work, T);
     }
 
-    internal static void Step(MatrixView A, MatrixView T)
+    internal static void Step(MatrixView A, MatrixView T, 
+        VectorView d, VectorView e)
     {
         int ARows = A.Rows;
         int TRows = T.Rows;
 
         VectorView tmp = Vector.Create(ARows);
 
-        var i = 0;
-        for (; i < TRows; i++)
+        for (var i = 0; i < TRows; i++)
         {
+            d[i] = A[i, i];
             if (i < ARows - 1)
             {
                 var A20 = A[(i + 1).., ..i];
@@ -73,7 +72,6 @@ public class HHUTTradiag: TridiagBase
 
                 HHUnbTradiag.BuildHH(a21, out var sigma, out tau11);
 
-                // Update H * A22 * H
                 SyMV(UpLo.Lower,
                     1, A22, a21,
                     0, p);
@@ -83,9 +81,9 @@ public class HHUTTradiag: TridiagBase
                 A22.Rank2(UpLo.Lower,
                     -1.0, a21, p);
 
-                // Store the transformation
                 a21.LeftMul(A20, t01);
                 a21.GetHeadRef() = sigma;
+                e[i] = sigma;
             }
         }
     }

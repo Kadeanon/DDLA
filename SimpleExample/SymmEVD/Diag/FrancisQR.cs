@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using DDLA.BLAS;
+using DDLA.UFuncs.Operators;
 
 namespace SimpleExample.SymmEVD.Diag;
 
@@ -469,21 +471,7 @@ public class FrancisQR(VectorView d,
     private static void ApplyRight
         (VectorView left, VectorView right,
         double c, double s)
-    {
-        int m = left.Length;
-        ref var leftRef = ref left.GetHeadRef();
-        ref var rightRef = ref right.GetHeadRef();
-
-        // TODO: use SIMD
-        for (int i = 0; i < m; i++)
-        {
-            double temp = c * leftRef - s * rightRef;
-            rightRef = s * leftRef + c * rightRef;
-            leftRef = temp;
-            leftRef = ref Unsafe.Add(ref leftRef, left.Stride);
-            rightRef = ref Unsafe.Add(ref rightRef, right.Stride);
-        }
-    }
+        => BlasProvider.Rot(left, right, c, -s);
 
     public static void ComputeGivens(double a, double b,
         out double c, out double s)
