@@ -369,13 +369,28 @@ public class Vector
         return result;
     }
 
+    public void AddedBy(VectorView other) =>
+        BlasProvider.Add(other, View);
+
+    public void AddedBy(double alpha, VectorView other) =>
+        BlasProvider.Axpy(alpha, other, View);
+
+    public void AddedBy(VectorView other, double beta) =>
+        BlasProvider.Xpby(other, beta, View);
+
+    public void AddedBy(double alpha, VectorView other, double beta) =>
+        BlasProvider.Axpby(alpha, other, beta, View);
+
+    public void SubtractedBy(VectorView other) =>
+        BlasProvider.Sub(other, View);
+
     public double Dot(Vector other) =>
-        BlasProvider.Dot(this, other);
+        BlasProvider.Dot(View, other);
 
     public Matrix Outer(Vector other, Matrix? output = null)
     {
         Matrix result = output ?? Matrix.Create(Length, other.Length);
-        BlasProvider.GeR(1, this, other, result);
+        BlasProvider.GeR(1, View, other, result);
         return result;
     }
 
@@ -386,14 +401,14 @@ public class Vector
     {
         var result = output ?? Create(right.Rows, uninited: true);
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
-            1.0, right, this, 0.0, result);
+            1.0, right, View, 0.0, result);
         return result;
     }
 
     public Vector LeftMul(MatrixView right, double beta, Vector output)
     {
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
-            1.0, right, this, beta, output);
+            1.0, right, View, beta, output);
         return output;
     }
 
@@ -401,37 +416,37 @@ public class Vector
     {
         var result = output ?? Create(right.Rows, uninited: true);
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
-            alpha, right, this, 0.0, result);
+            alpha, right, View, 0.0, result);
         return result;
     }
 
     public Vector LeftMul(double alpha, MatrixView right, double beta, Vector output)
     {
         BlasProvider.GeMV(Misc.Flags.TransType.OnlyTrans,
-            alpha, right, this, beta, output);
+            alpha, right, View, beta, output);
         return output;
     }
 
     public double Nrm1() =>
-        BlasProvider.Nrm1(this);
+        BlasProvider.Nrm1(View);
 
     public double NrmF() =>
-        BlasProvider.NrmF(this);
+        BlasProvider.NrmF(View);
 
     public double NrmInf() =>
-        BlasProvider.NrmInf(this);
+        BlasProvider.NrmInf(View);
 
     public double Max() =>
-        UFunc.Reduce<MaxAggregationOperator<double>>(this);
+        UFunc.Reduce<MaxAggregationOperator<double>>(View);
 
     public double SumSq()
-        => UFunc.Sum<SquareOperator<double>>(this);
+        => UFunc.Sum<SquareOperator<double>>(View);
 
     public double Sum()
-        => UFunc.Sum<IdentityOperator<double>>(this);
+        => UFunc.Sum<IdentityOperator<double>>(View);
 
     public double SumAbs()
-        => UFunc.Sum<AbsOperator<double>>(this);
+        => UFunc.Sum<AbsOperator<double>>(View);
 
     public Vector Scale(double scalar, Vector? output = null)
     {

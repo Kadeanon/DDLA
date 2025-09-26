@@ -8,12 +8,16 @@ public struct ArrayHandle<T, TPool> : IPooledHandle<T[]> where TPool : ArrayPool
 
     public int Length { get; }
 
-    public ArrayHandle(TPool pool, int length, out T[] value)
+    public bool ClearBeforeReturn { get; }
+
+    public ArrayHandle(TPool pool, int length, out T[] value, 
+        bool clearBeforeReturn = true)
     {
         Pool = pool;
         Length = length;
         Value = pool.Rent(length);
         value = Value;
+        ClearBeforeReturn = clearBeforeReturn;
     }
 
     public readonly T[] Value { get; }
@@ -28,7 +32,8 @@ public struct ArrayHandle<T, TPool> : IPooledHandle<T[]> where TPool : ArrayPool
 
     public void Return()
     {
-        Value.AsSpan(0, Length).Clear();
+        if(ClearBeforeReturn)
+            Value.AsSpan(0, Length).Clear();
         Pool.Return(Value);
         ReturnedToPool = true;
     }

@@ -62,8 +62,8 @@ public class TestQR
         for (int i = 0; i < count; i++)
         {
             MatrixView orig = CreateMatrixRandom(m, n);
-            var (q, r) = new QR(orig);
-            var result = q * r;
+            var (Q, R) = new QR(orig);
+            var result = Q * R;
             var diff = orig - result;
             double n1 = diff.Nrm1(),
                 n2 = diff.NrmF(),

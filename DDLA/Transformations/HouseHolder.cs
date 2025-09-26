@@ -54,6 +54,26 @@ public static class HouseHolder
         tau = (1 + scaledLenLast * scaledLenLast) / 2;
     }
 
+
+
+    /// <summary>
+    /// Apply a HouseHolder transformation H to a matrix A.
+    /// This method applies the implicitly stored Householder H with
+    /// vector u(<paramref name="u2"/> with implicitly first element 1) 
+    /// and scalar (<paramref name="tau"/>) to the target matrix. 
+    /// The transformation is performed in-place, overwriting the original data
+    /// in matrix <paramref name="A"/>.
+    /// </summary>
+    /// <param name="side">Specifies whether 
+    /// the transformation is applied from the left or right.</param>
+    /// <param name="tau">The scalar factor for the Householder transformation.
+    /// H = (I - inv(<paramref name="tau"/>)uu^T</param>
+    /// <param name="u2">The last part of u.</param>
+    /// <param name="A">The matrix A.</param>
+    public static void ApplyHouseHolder(SideType side,
+        ref double tau, VectorView u2, MatrixView A)
+        => ApplyHouseHolder(side, ref tau, u2, A[0, ..], A[1.., ..]);
+
     /// <summary>
     /// Apply a HouseHolder transformation H to a matrix A.
     /// This method applies the implicitly stored Householder H with
@@ -81,10 +101,6 @@ public static class HouseHolder
 
         if (side == SideType.Left)
         {
-            //BlasProvider.GeMV(1, A2.T, u2, 1, w);
-            //BlasProvider.InvScal(tau, w);
-            //BlasProvider.Axpy(-1, w, a1);
-            //BlasProvider.GeR(-1, u2, w, A2);
             u2.LeftMul(A2, 1.0, w);
             w.InvScaled(tau);
             a1.SubtractedBy(w);
@@ -93,10 +109,6 @@ public static class HouseHolder
         }
         else if (side == SideType.Right)
         {
-            //BlasProvider.GeMV(1, A2, u2, 1, w);
-            //BlasProvider.InvScal(tau, w);
-            //BlasProvider.Axpy(-1, w, a1);
-            //BlasProvider.GeR(-1, w, u2, A2);
             A2.Multify(u2, 1.0, w);
             w.InvScaled(tau);
             a1.SubtractedBy(w);

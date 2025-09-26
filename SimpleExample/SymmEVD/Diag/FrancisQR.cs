@@ -247,6 +247,7 @@ public class FrancisQR(VectorView d,
 
     }
 
+    // From LibFlame
     public static void EVD2x2Inner(ref double alpha11,
                                 in double alpha21,
                                 ref double alpha22,
@@ -336,64 +337,150 @@ public class FrancisQR(VectorView d,
 
         if (sgn1 == sgn2)
         {
-            (g1, s1) = (-s1, g1);
+            gamma1 = -s1;
+            sigma1 = g1;
+        }
+        else
+        {
+            gamma1 = g1;
+            sigma1 = s1;
         }
 
-        gamma1 = g1;
-        sigma1 = s1;
     }
 
     static void BulgeStep(VectorView d, VectorView e)
     {
         Debug.Assert(d.Length >= 3);
-
-        double miu = WilkinsonShift
-            (d[^2], e[^2], d[^1]);
-
-        StartBulge(d, e, miu, out double bulge,
-            out _, out _);
-
+        Debug.Assert(d.Data != e.Data);
         int n = d.Length;
         int k = 0;
-        for (; k < n - 3; k++)
-        {
-            ChaseBulge(d, e, ref bulge, out _, out _);
-
-            d = d[1..];
-            e = e[1..];
-        }
-        DestroyBulge(d, e, in bulge, out _, out _);
-    }
-
-    static void BulgeStep(VectorView d, VectorView e, MatrixView Q)
-    {
-        Debug.Assert(d.Length >= 3);
-        Debug.Assert(d.Length == Q.Cols);
-
         //Console.WriteLine(
         //    $"[DEBUG]BulgeStep on {d.Offset}..{d.Offset + d.Length}");
 
         double miu = WilkinsonShift
             (d[^2], e[^2], d[^1]);
 
-        StartBulge(d, e, miu, out double bulge, 
-            out var c, out var s);
-        ApplyRight(Q[.., 0], Q[.., 1], c, s);
+        var d0 = d[0];
+        var e0 = e[0];
+        var d1 = d[1];
+        var e1 = e[1];
+        var d2 = d[2];
 
+        ComputeGivens(d0 - miu, e0, out var c, out var s);
+
+        var cc = c * c;
+        var cs = c * s;
+        var ss = s * s;
+
+        d[0] = cc * d0 - cs * e0 - cs * e0 + ss * d1;
+        e[0] = cs * d0 + cc * e0 - ss * e0 - cs * d1;
+        d[1] = ss * d0 + cs * e0 + cs * e0 + cc * d1;
+        var bulge = -s * e1;
+        e[1] = c * e1;
+
+        e0 = e[0];
+        d1 = d[1];
+        e1 = e[1];
+        d2 = d[2];
+
+        for (; k < n - 2; k++)
+        {
+            ComputeGivens(e0, bulge, out c, out s);
+
+            cc = c * c;
+            cs = c * s;
+            ss = s * s;
+
+            e[0] = c * e0 - s * bulge;
+            d[1] = cc * d1 - cs * e1 - cs * e1 + ss * d2;
+            e[1] = cs * d1 + cc * e1 - ss * e1 - cs * d2;
+            d[2] = ss * d1 + cs * e1 + cs * e1 + cc * d2;
+
+            if (k < n - 3)
+            {
+                ref var e2 = ref e[2];
+                bulge = -s * e2;
+                e2 *= c;
+
+                e0 = e[1];
+                d1 = d[2];
+                e1 = e[2];
+                d2 = d[3];
+
+                d = d[1..];
+                e = e[1..];
+            }
+        }
+    }
+
+    static void BulgeStep(VectorView d, VectorView e, MatrixView Q)
+    {
+        Debug.Assert(d.Length >= 3);
+        Debug.Assert(d.Length == Q.Cols);
+        Debug.Assert(d.Data != e.Data);
         int n = d.Length;
         int k = 0;
-        for (; k < n - 3; k++)
+        //Console.WriteLine(
+        //    $"[DEBUG]BulgeStep on {d.Offset}..{d.Offset + d.Length}");
+
+        double miu = WilkinsonShift
+            (d[^2], e[^2], d[^1]);
+
+        var d0 = d[0];
+        var e0 = e[0];
+        var d1 = d[1];
+        var e1 = e[1];
+        var d2 = d[2];
+
+        ComputeGivens(d0 - miu, e0, out var c, out var s);
+
+        var cc = c * c;
+        var cs = c * s;
+        var ss = s * s;
+
+        d[0] = cc * d0 - cs * e0 - cs * e0 + ss * d1;
+        e[0] = cs * d0 + cc * e0 - ss * e0 - cs * d1;
+        d[1] = ss * d0 + cs * e0 + cs * e0 + cc * d1;
+        var bulge = -s * e1;
+        e[1] = c * e1;
+
+        e0 = e[0];
+        d1 = d[1];
+        e1 = e[1];
+        d2 = d[2];
+
+        ApplyRight(Q[.., 0], Q[.., 1], c, s);
+
+        for (; k < n - 2; k++)
         {
-            ChaseBulge(d, e, ref bulge, out c, out s);
+            ComputeGivens(e0, bulge, out c, out s);
+
+            cc = c * c;
+            cs = c * s;
+            ss = s * s;
+
+            e[0] = c * e0 - s * bulge;
+            d[1] = cc * d1 - cs * e1 - cs * e1 + ss * d2;
+            e[1] = cs * d1 + cc * e1 - ss * e1 - cs * d2;
+            d[2] = ss * d1 + cs * e1 + cs * e1 + cc * d2;
             ApplyRight(Q[.., 1], Q[.., 2], c, s);
 
-            d = d[1..];
-            e = e[1..];
-            Q = Q[.., 1..];
+            if (k < n - 3)
+            {
+                ref var e2 = ref e[2];
+                bulge = -s * e2;
+                e2 *= c;
+
+                e0 = e[1];
+                d1 = d[2];
+                e1 = e[2];
+                d2 = d[3];
+
+                d = d[1..];
+                e = e[1..];
+                Q = Q[.., 1..];
+            }
         }
-        Debug.Assert(Q.Cols == 3);
-        DestroyBulge(d, e, in bulge, out c, out s);
-        ApplyRight(Q[.., 1], Q[.., 2], c, s);
     }
 
     static void StartBulge(VectorView d, VectorView e,
@@ -405,8 +492,8 @@ public class FrancisQR(VectorView d,
         var d1 = d[1];
         var e1 = e[1];
 
-        ComputeGivens(d[0] - miu,
-            e[0], out c, out s);
+        ComputeGivens(d0 - miu,
+            e0, out c, out s);
 
         var cc = c * c;
         var cs = c * s;
@@ -497,10 +584,32 @@ public class FrancisQR(VectorView d,
         }
     }
 
-    public static double WilkinsonShift(double a, double b, double c)
+    // From LibFlame
+    private static double WilkinsonShift(double a, 
+        double b, double c)
     {
-        double d = (a - c) * 0.5;
-        double sign_d = (d >= 0.0) ? 1.0 : -1.0;
-        return c - sign_d * b * b / (Math.Abs(d) + Math.Sqrt(d * d + b * b));
+        // Compute a scaling factor to promote numerical stability.
+        var scale = Math.Abs(a) + 2.0 * Math.Abs(b) + Math.Abs(c);
+
+        if (scale == 0.0) return c;
+
+        double invScale = 1 / scale;
+
+        if (b != 0.0)
+        {
+            b *= invScale;
+
+            double p = (invScale * a - invScale * c) / 2;
+            double r = double.Hypot(p, b);
+
+            if (a < c) p -= r;
+            else p += r;
+
+            return c - scale * (b * b / p);
+        }
+        else
+        {
+            return c;
+        }
     }
 }

@@ -138,46 +138,15 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// (x, y) = (c*X + s*Y, c*Y - s*X)
+    /// (x, y) = (c * x + s * y, - s * x + c * y)
     /// </summary>
-    /// <param name="x"></param>
-    /// <param name="y"></param>
-    /// <param name="c"></param>
-    /// <param name="s"></param>
     public static void Rot(in vector x, in vector y, scalar c, scalar s)
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
         if (c == 1 && s == 0) return;
 
-        var blocksize = 2048;
-        if(length > blocksize)
-        {
-            int parallelDegree = (length + blocksize - 1) 
-                / blocksize;
-            parallelDegree = Math.Min(parallelDegree,
-                Environment.ProcessorCount / 2);
-            if (parallelDegree > 1)
-            {
-                int block = (length + parallelDegree - 1)
-                    / parallelDegree;
-                var xVal = x;
-                var yVal = y;
-                Parallel.For(0, parallelDegree, index =>
-                {
-                    int start = index * block;
-                    int end = Math.Min(
-                        (index + 1) * block, length);
-                    vector xBlock = xVal[start..end];
-                    vector yBlock = yVal[start..end];
-                    RotInner(in xBlock, in yBlock, c, s);
-                });
-            }
-            else
-                RotInner(in x, in y, c, s);
-        }
-        else
-            RotInner(in x, in y, c, s);
+        RotInner(in x, in y, c, s);
     }
 
     private static void RotInner(in vector x, in vector y, scalar c, scalar s)

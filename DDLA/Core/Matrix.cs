@@ -775,8 +775,6 @@ public class Matrix : IEnumerable<double>
         int m = left.Rows;
         int n = right.Cols;
         var dest = Create(m, n, uninited: true);
-        left = left.MakeRowMajor();
-        right = right.MakeRowMajor();
         BlasProvider.GeMM(1.0, left, right, 0.0, dest);
         return dest;
     }
