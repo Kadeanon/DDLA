@@ -1,12 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using DDLA.BLAS;
-using DDLA.UFuncs.Operators;
+using DDLA.Utilities;
+using Givens = (double c, double s);
 
 namespace SimpleExample.SymmEVD.Diag;
 
 public class FrancisQR(VectorView d,
-    VectorView e, MatrixView? Q = null,
+    VectorView e, MatrixView Q,
     double tol = 1e-16, int maxIter = 32)
 {
     public double Tol { get; private set; } = tol;
@@ -19,11 +20,14 @@ public class FrancisQR(VectorView d,
 
     public VectorView e { get; } = e;
 
-    public MatrixView? Q { get; set; } = Q;
+    public MatrixView Q { get; set; } = Q;
+
+    private Givens[] Rotations { get; } = new Givens[d.Length];
 
     public void Kernel()
     {
-        ImplicitQrTridiag(d, e, Q);
+        using var _ = PoolUtils.Borrow<Givens>(e.Length, out var rots);
+        ImplicitQrTridiag(d, e, Q, rots);
         SortResults();
     }
 
@@ -84,7 +88,7 @@ public class FrancisQR(VectorView d,
     }
 
     public void ImplicitQrTridiag(VectorView d,
-        VectorView e, MatrixView? QMaybe)
+        VectorView e, MatrixView Q, Span<Givens> rots)
     {
         int m;
         int start, end;
@@ -99,8 +103,7 @@ public class FrancisQR(VectorView d,
         if (d.Length == 2)
         {
             EVD2x2(d, e, tol, out var c, out var s);
-            if (QMaybe is MatrixView Q)
-                ApplyRight(Q[.., 0], Q[.., 1], c, s);
+            ApplyRight(Q[.., 0], Q[.., 1], c, s);
             TotalIter++;
             return;
         }
@@ -165,14 +168,16 @@ public class FrancisQR(VectorView d,
 
                 var d0 = d[start..(m + 1)];
                 var e0 = e[start..m];
-                var Q0 = QMaybe?[.., start..(m + 1)];
+                var Q0 = Q[.., start..(m + 1)];
+                var rot0 = rots[start..m];
 
                 var d1 = d[(m + 1)..(end + 1)];
                 var e1 = e[(m + 1)..(end)];
-                var Q1 = QMaybe?[.., (m + 1)..(end + 1)];
+                var Q1 = Q[.., (m + 1)..(end + 1)];
+                var rot1 = rots[(m + 1)..end];
 
-                ImplicitQrTridiag(d0, e0, Q0);
-                ImplicitQrTridiag(d1, e1, Q1);
+                ImplicitQrTridiag(d0, e0, Q0, rot0);
+                ImplicitQrTridiag(d1, e1, Q1, rot1);
 
                 // 由于调用结束后左右两部分均已收敛，
                 // 因此当前对角化结束，直接返回
@@ -191,8 +196,7 @@ public class FrancisQR(VectorView d,
                     var dWork = d[start..(end + 1)];
                     var eWork = e[start..end];
                     EVD2x2(dWork, eWork, tol, out var c, out var s);
-                    if (QMaybe is MatrixView Q)
-                        ApplyRight(Q[.., start], Q[.., end], c, s);
+                    ApplyRight(Q[.., start], Q[.., end], c, s);
                     TotalIter++;
                     break;
                 }
@@ -200,11 +204,9 @@ public class FrancisQR(VectorView d,
                 {
                     var dWork = d[start..(end + 1)];
                     var eWork = e[start..end];
-                    var QWork = QMaybe?[.., start..(end + 1)];
-                    if (QWork is MatrixView Q)
-                        BulgeStep(dWork, eWork, Q);
-                    else
-                        BulgeStep(dWork, eWork);
+                    var QWork = Q[.., start..(end + 1)];
+                    var rotWork = rots[start..end];
+                    BulgeStep(dWork, eWork, QWork, rotWork);
 
                     TotalIter += dWork.Length;
 
@@ -240,7 +242,7 @@ public class FrancisQR(VectorView d,
         }
         else
         {
-            EVD2x2Inner(ref a, in b, ref c, 
+            EVD2x2Inner(ref a, in b, ref c,
                 out g, out s);
             s = -s;
         }
@@ -248,172 +250,102 @@ public class FrancisQR(VectorView d,
     }
 
     // From LibFlame
-    public static void EVD2x2Inner(ref double alpha11,
-                                in double alpha21,
-                                ref double alpha22,
-                                out double gamma1,
-                                out double sigma1)
+    public static void EVD2x2Inner(ref double a,
+                                in double b,
+                                ref double c,
+                                out double g,
+                                out double s)
     {
-        double g1, s1;
-        double acmn, acmx, acs, cs, ct, df, rt, sm, tb, tn;
-        int sgn1, sgn2;
+        double min, max, acs, cs, delta;
+        bool low, high;
 
         // Compute the eigenvalues.
 
-        sm = alpha11 + alpha22;
-        df = alpha11 - alpha22;
-        var dfs = df * df;
-        tb = alpha21 + alpha21;
-        var tbs = tb * tb;
+        var sum = a + c;
+        var diff = a - c;
+        var diffSq = diff * diff;
+        var b2 = b + b;
+        var b2sq = b2 * b2;
 
-        if (Math.Abs(alpha11) > Math.Abs(alpha22))
+        if (Math.Abs(a) > Math.Abs(c))
         {
-            acmx = alpha11;
-            acmn = alpha22;
+            max = a;
+            min = c;
         }
         else
         {
-            acmx = alpha22;
-            acmn = alpha11;
+            max = c;
+            min = a;
         }
 
-        if (dfs > tbs)
-            rt = Math.Abs(df) * Math.Sqrt(1.0 + tbs / dfs);
-        else if (dfs < tbs)
-            rt = Math.Abs(tb) * Math.Sqrt(1.0 + dfs / tbs);
+        if (diffSq > b2sq)
+            delta = Math.Abs(diff) * Math.Sqrt(1.0 + b2sq / diffSq);
+        else if (diffSq < b2sq)
+            delta = Math.Abs(b2) * Math.Sqrt(1.0 + diffSq / b2sq);
         else
-            rt = Math.Abs(tb) * Math.Sqrt(2.0);
-        if (sm < 0.0)
+            delta = Math.Abs(b2) * Math.Sqrt(2.0);
+
+        if (sum == 0.0)
         {
-            alpha11 = 0.5 * (sm - rt);
-            alpha22 = (acmx / alpha11) * acmn - (alpha21 / alpha11) * alpha21;
-            sgn1 = -1;
+            a = 0.5 * delta;
+            c = -0.5 * delta;
+            low = false;
         }
-        else if (sm > 0.0)
+        else if (sum < 0.0)
         {
-            alpha11 = 0.5 * (sm + rt);
-            alpha22 = (acmx / alpha11) * acmn - (alpha21 / alpha11) * alpha21;
-            sgn1 = 1;
+            a = 0.5 * (sum - delta);
+            c = (max / a) * min - (b / a) * b;
+            low = true;
         }
         else
         {
-            alpha11 = 0.5 * rt;
-            alpha22 = -0.5 * rt;
-            sgn1 = 1;
+            a = 0.5 * (sum + delta);
+            c = (max / a) * min - (b / a) * b;
+            low = false;
         }
 
         // Compute the eigenvector.
 
-        if (df >= 0.0)
+        if (a >= c)
         {
-            cs = df + rt;
-            sgn2 = 1;
+            cs = diff + delta;
+            high = true;
         }
         else
         {
-            cs = df - rt;
-            sgn2 = -1;
+            cs = diff - delta;
+            high = false;
         }
 
         acs = Math.Abs(cs);
+        var atb = Math.Abs(b2);
 
-        if (acs > Math.Abs(tb))
+        double tau;
+        if (atb == 0.0)
         {
-            ct = -tb / cs;
-            s1 = 1.0 / Math.Sqrt(1.0 + ct * ct);
-            g1 = ct * s1;
+            g = 1.0;
+            s = 0.0;
         }
-        else if (Math.Abs(tb) == 0.0)
+        else if (acs > atb)
         {
-            g1 = 1.0;
-            s1 = 0.0;
-        }
-        else
-        {
-            tn = -cs / tb;
-            g1 = 1.0 / Math.Sqrt(1.0 + tn * tn);
-            s1 = tn * g1;
-        }
-
-        if (sgn1 == sgn2)
-        {
-            gamma1 = -s1;
-            sigma1 = g1;
+            tau = -b2 / cs;
+            s = 1.0 / double.Hypot(1.0, tau);
+            g = tau * s;
         }
         else
         {
-            gamma1 = g1;
-            sigma1 = s1;
+            tau = -cs / b2;
+            g = 1.0 / double.Hypot(1.0, tau);
+            s = tau * g;
         }
+
+        if (low != high)
+            (g, s) = (-s, g);
 
     }
 
-    static void BulgeStep(VectorView d, VectorView e)
-    {
-        Debug.Assert(d.Length >= 3);
-        Debug.Assert(d.Data != e.Data);
-        int n = d.Length;
-        int k = 0;
-        //Console.WriteLine(
-        //    $"[DEBUG]BulgeStep on {d.Offset}..{d.Offset + d.Length}");
-
-        double miu = WilkinsonShift
-            (d[^2], e[^2], d[^1]);
-
-        var d0 = d[0];
-        var e0 = e[0];
-        var d1 = d[1];
-        var e1 = e[1];
-        var d2 = d[2];
-
-        ComputeGivens(d0 - miu, e0, out var c, out var s);
-
-        var cc = c * c;
-        var cs = c * s;
-        var ss = s * s;
-
-        d[0] = cc * d0 - cs * e0 - cs * e0 + ss * d1;
-        e[0] = cs * d0 + cc * e0 - ss * e0 - cs * d1;
-        d[1] = ss * d0 + cs * e0 + cs * e0 + cc * d1;
-        var bulge = -s * e1;
-        e[1] = c * e1;
-
-        e0 = e[0];
-        d1 = d[1];
-        e1 = e[1];
-        d2 = d[2];
-
-        for (; k < n - 2; k++)
-        {
-            ComputeGivens(e0, bulge, out c, out s);
-
-            cc = c * c;
-            cs = c * s;
-            ss = s * s;
-
-            e[0] = c * e0 - s * bulge;
-            d[1] = cc * d1 - cs * e1 - cs * e1 + ss * d2;
-            e[1] = cs * d1 + cc * e1 - ss * e1 - cs * d2;
-            d[2] = ss * d1 + cs * e1 + cs * e1 + cc * d2;
-
-            if (k < n - 3)
-            {
-                ref var e2 = ref e[2];
-                bulge = -s * e2;
-                e2 *= c;
-
-                e0 = e[1];
-                d1 = d[2];
-                e1 = e[2];
-                d2 = d[3];
-
-                d = d[1..];
-                e = e[1..];
-            }
-        }
-    }
-
-    static void BulgeStep(VectorView d, VectorView e, MatrixView Q)
+    static void BulgeStep(VectorView d, VectorView e,
+        MatrixView Q, Span<Givens> rots)
     {
         Debug.Assert(d.Length >= 3);
         Debug.Assert(d.Length == Q.Cols);
@@ -425,6 +357,7 @@ public class FrancisQR(VectorView d,
 
         double miu = WilkinsonShift
             (d[^2], e[^2], d[^1]);
+        ref var rot = ref rots[0];
 
         var d0 = d[0];
         var e0 = e[0];
@@ -433,6 +366,7 @@ public class FrancisQR(VectorView d,
         var d2 = d[2];
 
         ComputeGivens(d0 - miu, e0, out var c, out var s);
+        rot = (c, s);
 
         var cc = c * c;
         var cs = c * s;
@@ -449,10 +383,9 @@ public class FrancisQR(VectorView d,
         e1 = e[1];
         d2 = d[2];
 
-        ApplyRight(Q[.., 0], Q[.., 1], c, s);
-
         for (; k < n - 2; k++)
         {
+            rot = ref Unsafe.Add(ref rot, 1);
             ComputeGivens(e0, bulge, out c, out s);
 
             cc = c * c;
@@ -463,9 +396,9 @@ public class FrancisQR(VectorView d,
             d[1] = cc * d1 - cs * e1 - cs * e1 + ss * d2;
             e[1] = cs * d1 + cc * e1 - ss * e1 - cs * d2;
             d[2] = ss * d1 + cs * e1 + cs * e1 + cc * d2;
-            ApplyRight(Q[.., 1], Q[.., 2], c, s);
+            rot = (c, s);
 
-            if (k < n - 3)
+            if (k != n - 3)
             {
                 ref var e2 = ref e[2];
                 bulge = -s * e2;
@@ -478,81 +411,14 @@ public class FrancisQR(VectorView d,
 
                 d = d[1..];
                 e = e[1..];
-                Q = Q[.., 1..];
             }
         }
-    }
 
-    static void StartBulge(VectorView d, VectorView e,
-        double miu, out double bulge, 
-        out double c, out double s)
-    {
-        var d0 = d[0];
-        var e0 = e[0];
-        var d1 = d[1];
-        var e1 = e[1];
-
-        ComputeGivens(d0 - miu,
-            e0, out c, out s);
-
-        var cc = c * c;
-        var cs = c * s;
-        var ss = s * s;
-
-        d[0] = cc * d0 - cs * e0 - cs * e0 + ss * d1;
-        e[0] = cs * d0 + cc * e0 - ss * e0 - cs * d1;
-        d[1] = ss * d0 + cs * e0 + cs * e0 + cc * d1;
-        bulge = - s * e1;
-        e[1] = c * e1;
-
-    }
-
-    static void ChaseBulge(VectorView d, VectorView e,
-        ref double bulge,
-        out double c, out double s)
-    {
-        var e0 = e[0];
-        var d1 = d[1];
-        var e1 = e[1];
-        var d2 = d[2];
-        var e2 = e[2];
-
-        ComputeGivens(e0,
-            bulge, out c, out s);
-
-        var cc = c * c;
-        var cs = c * s;
-        var ss = s * s;
-
-        e[0] = c * e0 - s * bulge;
-        d[1] = cc * d1 - cs * e1 - cs * e1 + ss * d2;
-        e[1] = cs * d1 + cc * e1 - ss * e1 - cs * d2;
-        d[2] = ss * d1 + cs * e1 + cs * e1 + cc * d2;
-
-        e[2] = + c * e2;
-        bulge = -s * e2;
-    }
-
-    static void DestroyBulge(VectorView d, VectorView e,
-        in double bulge,
-        out double c, out double s)
-    {
-        var e0 = e[0];
-        var d1 = d[1];
-        var e1 = e[1];
-        var d2 = d[2];
-
-        ComputeGivens(e0,
-            bulge, out c, out s);
-
-        var cc = c * c;
-        var cs = c * s;
-        var ss = s * s;
-
-        e[0] = c * e0 - s * bulge;
-        d[1] = cc * d1 - cs * e1 - cs * e1 + ss * d2;
-        e[1] = cs * d1 + cc * e1 - ss * e1 - cs * d2;
-        d[2] = ss * d1 + cs * e1 + cs * e1 + cc * d2;
+        for (int i = 0; i <= k; i++)
+        {
+            (c, s) = rots[i];
+            ApplyRight(Q[.., i], Q[.., i + 1], c, s);
+        }
     }
 
     private static void ApplyRight
@@ -585,7 +451,7 @@ public class FrancisQR(VectorView d,
     }
 
     // From LibFlame
-    private static double WilkinsonShift(double a, 
+    private static double WilkinsonShift(double a,
         double b, double c)
     {
         // Compute a scaling factor to promote numerical stability.
