@@ -9,16 +9,23 @@ namespace DDLA.UFuncs;
 
 public static partial class UFunc
 {
+    public static TOperator OrDefault<TOperator>(this TOperator? input)
+        where TOperator : struct, IOperator
+    {
+        return input ?? (TOperator.ShouldManualInitialize
+            ? new TOperator() : default);
+    }
+
     /// <summary>
-    /// x := Invoke(alpha)
+    /// src := Invoke(alpha)
     /// </summary>
     public static void Apply<TAction, TIn>(
-        VectorView x, TIn alpha, TAction action)
+        this VectorView src, TIn alpha, TAction? action = null)
         where TAction : struct, IUnaryOperator<TIn, double>
         where TIn : struct
     {
         Details.Apply_Impl
-            (ref x.GetHeadRef(), alpha, x.Indice, action);
+            (ref src.GetHeadRef(), alpha, src.Indice, action.OrDefault());
     }
 
     public static partial class Details
@@ -146,12 +153,12 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// x := Invoke(x)
+    /// src := Invoke(src)
     /// </summary>
-    public static void Map<TAction>(VectorView x, TAction action)
+    public static void Map<TAction>(this VectorView src, TAction? action = null)
                 where TAction : struct, IUnaryOperator<double, double>
     {
-        Details.Map_Impl(ref x.GetHeadRef(), x.Indice, action);
+        Details.Map_Impl(ref src.GetHeadRef(), src.Indice, action.OrDefault());
     }
 
     public static partial class Details
@@ -278,15 +285,15 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// x := Invoke(x, alpha)
+    /// src := Invoke(src, alpha)
     /// </summary>
     public static void Map<TAction, TIn>(
-        VectorView x, TIn alpha, TAction action)
+        this VectorView src, TIn alpha, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
     {
-        Details.Map_Impl(ref x.GetHeadRef(),
-            alpha, x.Indice, action);
+        Details.Map_Impl(ref src.GetHeadRef(),
+            alpha, src.Indice, action.OrDefault());
     }
 
     public static partial class Details
@@ -421,15 +428,15 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// y := Invoke(x)
+    /// dest := Invoke(src)
     /// </summary>
     public static void Map<TAction>(
-        VectorView x, VectorView y, TAction action)
+        this VectorView src, VectorView dest, TAction? action = null)
         where TAction : struct, IUnaryOperator<double, double>
     {
-        var indice = CheckIndice(x, y);
+        var indice = CheckIndice(src, dest);
         Details.Map_Impl(
-            ref x.GetHeadRef(), ref y.GetHeadRef(), indice, action);
+            ref src.GetHeadRef(), ref dest.GetHeadRef(), indice, action.OrDefault());
     }
 
     public static partial class Details
@@ -587,17 +594,17 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// y := Invoke(x, alpha)
+    /// dest := Invoke(src, alpha)
     /// </summary>
     public static void Map<TAction, TIn>(
-        VectorView x, TIn alpha, VectorView y, TAction action)
+        this VectorView src, TIn alpha, VectorView dest, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
     {
-        var indice = CheckIndice(x, y);
+        var indice = CheckIndice(src, dest);
         Details.Map_Impl
-            (ref x.GetHeadRef(),
-            alpha, ref y.GetHeadRef(), indice, action);
+            (ref src.GetHeadRef(),
+            alpha, ref dest.GetHeadRef(), indice, action.OrDefault());
     }
 
     public static partial class Details
@@ -760,15 +767,15 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// y := Invoke(x, y)
+    /// dest := Invoke(src, dest)
     /// </summary>
     public static void Combine<TAction>(
-        VectorView x, VectorView y, TAction action)
+        this VectorView src, VectorView dest, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, double, double>
     {
-        var indice = CheckIndice(x, y);
-        Details.Combine_Impl(ref x.GetHeadRef(),
-            ref y.GetHeadRef(), indice, action);
+        var indice = CheckIndice(src, dest);
+        Details.Combine_Impl(ref src.GetHeadRef(),
+            ref dest.GetHeadRef(), indice, action.OrDefault());
     }
 
     public static partial class Details
@@ -927,16 +934,16 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// y := Invoke(x, alpha, y)
+    /// dest := Invoke(src, alpha, dest)
     /// </summary>
     public static void Combine<TAction, TIn>(
-        VectorView x, TIn alpha, VectorView y, TAction action)
+        this VectorView src, TIn alpha, VectorView dest, TAction? action = null)
                 where TAction : struct, ITernaryOperator<double, TIn, double, double>
         where TIn : struct
     {
-        var indice = CheckIndice(x, y);
-        Details.Combine_Impl(ref x.GetHeadRef(),
-            alpha, ref y.GetHeadRef(), indice, action);
+        var indice = CheckIndice(src, dest);
+        Details.Combine_Impl(ref src.GetHeadRef(),
+            alpha, ref dest.GetHeadRef(), indice, action.OrDefault());
     }
 
     public static partial class Details
@@ -1100,11 +1107,11 @@ public static partial class UFunc
     }
 
     internal static DoubleIndice CheckIndice(
-        VectorView x, VectorView y)
+        VectorView src, VectorView dest)
     {
-        if (x.Length != y.Length)
-            throw new ArgumentException("Error: x and y must have the same length.");
-        return new(x.Length, x.Stride, y.Stride);
+        if (src.Length != dest.Length)
+            throw new ArgumentException("Error: src and dest must have the same length.");
+        return new(src.Length, src.Stride, dest.Stride);
     }
 
     internal static (DoubleIndice rowIndice, DoubleIndice colIndice) CheckIndice

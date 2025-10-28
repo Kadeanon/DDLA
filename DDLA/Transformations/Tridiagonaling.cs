@@ -201,8 +201,7 @@ public static class Tridiagonaling
                 ref double tau11 = ref TT1[i, i];
 
                 HouseHolder.ApplyHouseHolder(SideType.Left,
-                    ref tau11, a21,
-                    AB1[i.., (i + 1)..]);
+                    tau11, a21, AB1[i.., (i + 1)..]);
 
                 alphA11 = 1 - 1 / tau11;
 

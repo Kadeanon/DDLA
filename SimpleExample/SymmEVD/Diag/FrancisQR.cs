@@ -22,13 +22,12 @@ public class FrancisQR(VectorView d,
 
     public MatrixView Q { get; set; } = Q;
 
-    private Givens[] Rotations { get; } = new Givens[d.Length];
-
     public void Kernel()
     {
         using var _ = PoolUtils.Borrow<Givens>(e.Length, out var rots);
         ImplicitQrTridiag(d, e, Q, rots);
         SortResults();
+        Console.WriteLine($"Average calculate a eigenValue use {TotalIter / d.Length} sweep.");
     }
 
     void SortResults()
@@ -102,8 +101,8 @@ public class FrancisQR(VectorView d,
 
         if (d.Length == 2)
         {
-            EVD2x2(d, e, tol, out var c, out var s);
-            ApplyRight(Q[.., 0], Q[.., 1], c, s);
+            EVD2x2(d, e, tol, out var giv);
+            ApplyRight(Q[.., 0], Q[.., 1], giv);
             TotalIter++;
             return;
         }
@@ -195,8 +194,8 @@ public class FrancisQR(VectorView d,
                 {
                     var dWork = d[start..(end + 1)];
                     var eWork = e[start..end];
-                    EVD2x2(dWork, eWork, tol, out var c, out var s);
-                    ApplyRight(Q[.., start], Q[.., end], c, s);
+                    EVD2x2(dWork, eWork, tol, out var giv);
+                    ApplyRight(Q[.., start], Q[.., end], giv);
                     TotalIter++;
                     break;
                 }
@@ -206,7 +205,22 @@ public class FrancisQR(VectorView d,
                     var eWork = e[start..end];
                     var QWork = Q[.., start..(end + 1)];
                     var rotWork = rots[start..end];
-                    BulgeStep(dWork, eWork, QWork, rotWork);
+                    BulgeStep(dWork, eWork, rotWork);
+
+
+                    var i = 0;
+                    for (; i < eWork.Length - 1; i += 2)
+                    {
+                        var (c1, s1) = rotWork[i];
+                        var (c2, s2) = rotWork[i + 1];
+                        BlasProvider.Rot2(QWork[.., i], QWork[.., i + 1], QWork[.., i + 2], 
+                            (c1, -s1), (c2, -s2));
+                    }
+                    for (; i < eWork.Length; i++)
+                    {
+                        var (c1, s1) = rotWork[i];
+                        BlasProvider.Rot(QWork[.., i], QWork[.., i + 1], (c1, -s1));
+                    }
 
                     TotalIter += dWork.Length;
 
@@ -230,21 +244,20 @@ public class FrancisQR(VectorView d,
     }
 
     static void EVD2x2(VectorView d, VectorView e,
-        double tol, out double g, out double s)
+        double tol, out Givens giv)
     {
         ref var a = ref d[0];
         ref var b = ref e[0];
         ref var c = ref d[1];
         if (Converged(a, b, c, tol))
         {
-            g = 1;
-            s = 0;
+            giv = (1, 0);
         }
         else
         {
             EVD2x2Inner(ref a, in b, ref c,
-                out g, out s);
-            s = -s;
+                out var g, out var s);
+            giv = (g, -s);
         }
 
     }
@@ -341,14 +354,12 @@ public class FrancisQR(VectorView d,
 
         if (low != high)
             (g, s) = (-s, g);
-
     }
 
     static void BulgeStep(VectorView d, VectorView e,
-        MatrixView Q, Span<Givens> rots)
+        Span<Givens> rots)
     {
         Debug.Assert(d.Length >= 3);
-        Debug.Assert(d.Length == Q.Cols);
         Debug.Assert(d.Data != e.Data);
         int n = d.Length;
         int k = 0;
@@ -356,7 +367,7 @@ public class FrancisQR(VectorView d,
         //    $"[DEBUG]BulgeStep on {d.Offset}..{d.Offset + d.Length}");
 
         double miu = WilkinsonShift
-            (d[^2], e[^2], d[^1]);
+            (d[^2], e[^1], d[^1]);
         ref var rot = ref rots[0];
 
         var d0 = d[0];
@@ -413,18 +424,17 @@ public class FrancisQR(VectorView d,
                 e = e[1..];
             }
         }
-
-        for (int i = 0; i <= k; i++)
-        {
-            (c, s) = rots[i];
-            ApplyRight(Q[.., i], Q[.., i + 1], c, s);
-        }
     }
 
     private static void ApplyRight
         (VectorView left, VectorView right,
         double c, double s)
-        => BlasProvider.Rot(left, right, c, -s);
+        => BlasProvider.Rot(left, right, (c, -s));
+
+    private static void ApplyRight
+        (VectorView left, VectorView right,
+        Givens giv)
+        => BlasProvider.Rot(left, right, (giv.c, -giv.s));
 
     public static void ComputeGivens(double a, double b,
         out double c, out double s)

@@ -8,21 +8,25 @@ namespace DDLA.UFuncs;
 public static partial class UFunc
 {
     public static MArray Apply<TAction, TIn>
-        (MArray array, TIn alpha, TAction action)
+        (this MArray array, TIn alpha, TAction? action = null)
         where TAction : struct, IUnaryOperator<TIn, double>
         where TIn : struct
     {
         if (array.Rank == 0)
             return array;
-        else if (array.Rank == 1)
+        
+        var instance = action.OrDefault();
+
+        if (array.Rank == 1)
         {
             Details.Apply_Impl(ref array.GetHeadRef(),
-                alpha, new SingleIndice(array.Lengths[0], array.Strides[0]), action);
+                alpha, new SingleIndice(array.Lengths[0], array.Strides[0]),
+                instance);
             return array;
         }
         else
         {
-            Parallel.For(0, array.Lengths[0], index =>
+            Parallel.For(0, array.Lengths[0], (int index) =>
             {
                 ref var head = ref Unsafe.Add(ref array.GetHeadRef(),
                     index * array.Strides[0]);
@@ -33,7 +37,7 @@ public static partial class UFunc
                     indices[i] = new SingleIndice(array.Lengths[i + 1],
                         array.Strides[i + 1]);
                 }
-                Details.Apply_Impl(ref head, alpha, indices, action);
+                Details.Apply_Impl(ref head, alpha, indices, instance);
             });
             return array;
         }
@@ -72,15 +76,18 @@ public static partial class UFunc
     }
 
     public static MArray Map<TAction>
-        (MArray array, TAction action)
+        (this MArray array, TAction? action = null)
         where TAction : struct, IUnaryOperator<double, double>
     {
         if (array.Rank == 0)
             return array;
-        else if (array.Rank == 1)
+
+        var instance = action.OrDefault();
+
+        if (array.Rank == 1)
         {
             Details.Map_Impl(ref array.GetHeadRef(),
-                new SingleIndice(array.Lengths[0], array.Strides[0]), action);
+                new SingleIndice(array.Lengths[0], array.Strides[0]), instance);
             return array;
         }
         else
@@ -96,7 +103,7 @@ public static partial class UFunc
                     indices[i] = new SingleIndice(subArray.Lengths[i],
                         subArray.Strides[i]);
                 }
-                Details.Map_Impl(ref head, indices, action);
+                Details.Map_Impl(ref head, indices, instance);
             });
             return array;
         }
@@ -133,16 +140,19 @@ public static partial class UFunc
     }
 
     public static MArray Map<TAction, TIn>(
-         MArray array, TIn alpha, TAction action)
+         this MArray array, TIn alpha, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
     {
         if (array.Rank == 0)
             return array;
-        else if (array.Rank == 1)
+
+        var instance = action.OrDefault();
+
+        if (array.Rank == 1)
         {
             Details.Map_Impl(ref array.GetHeadRef(),
-                alpha, new SingleIndice(array.Lengths[0], array.Strides[0]), action);
+                alpha, new SingleIndice(array.Lengths[0], array.Strides[0]), instance);
             return array;
         }
         else
@@ -158,7 +168,7 @@ public static partial class UFunc
                     indices[i] = new SingleIndice(subArray.Lengths[i],
                         subArray.Strides[i]);
                 }
-                Details.Map_Impl(ref head, alpha, indices, action);
+                Details.Map_Impl(ref head, alpha, indices, instance);
             });
             return array;
         }
@@ -199,12 +209,14 @@ public static partial class UFunc
     }
 
     public static void Map<TAction>(
-        MArray src, MArray dest, TAction action)
+        this MArray src, MArray dest, TAction? action = null)
         where TAction : struct, IUnaryOperator<double, double>
     {
         ThrowUtils.ThrowIfArrayNotMatch(src, dest);
         if (src.Rank == 0)
             return;
+
+        var instance = action.OrDefault();
         DoubleIndice[] indices = new DoubleIndice[src.Rank];
         for (int i = 0; i < src.Rank; i++)
         {
@@ -232,7 +244,7 @@ public static partial class UFunc
             ref var srcHead = ref src.Data[src.Offset];
             ref var destHead = ref dest.Data[dest.Offset];
             Details.Map_Impl(ref srcHead,
-                 ref destHead, indices[0], action);
+                 ref destHead, indices[0], instance);
             return;
         }
         else
@@ -245,7 +257,7 @@ public static partial class UFunc
                     src.Offset + index * head.AStride];
                 ref var destRef = ref dest.Data[
                     dest.Offset + index * head.BStride];
-                Details.Map_Impl(ref srcRef, ref destRef, indices, action);
+                Details.Map_Impl(ref srcRef, ref destRef, indices, instance);
             });
             return;
         }
@@ -286,13 +298,15 @@ public static partial class UFunc
     }
 
     public static void Map<TAction, TIn>(
-         MArray src, TIn alpha, MArray dest, TAction action)
+         this MArray src, TIn alpha, MArray dest, TAction? action = null)
         where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
     {
         ThrowUtils.ThrowIfArrayNotMatch(src, dest);
         if (src.Rank == 0)
             return;
+
+        var instance = action.OrDefault();
         DoubleIndice[] indices = new DoubleIndice[src.Rank];
         for (int i = 0; i < src.Rank; i++)
         {
@@ -320,7 +334,7 @@ public static partial class UFunc
             ref var srcHead = ref src.Data[src.Offset];
             ref var destHead = ref dest.Data[dest.Offset];
             Details.Map_Impl
-                (ref srcHead, alpha, ref destHead, indices[0], action);
+                (ref srcHead, alpha, ref destHead, indices[0], instance);
             return;
         }
         else
@@ -334,7 +348,7 @@ public static partial class UFunc
                 ref var destRef = ref dest.Data[
                     dest.Offset + index * head.BStride];
                 Details.Map_Impl
-                (ref srcRef, alpha, ref destRef, indices, action);
+                (ref srcRef, alpha, ref destRef, indices, instance);
             });
             return;
         }
@@ -376,12 +390,14 @@ public static partial class UFunc
     }
 
     public static void Combine<TAction>(
-         MArray src, MArray dest, TAction action)
+         this MArray src, MArray dest, TAction? action = null)
         where TAction : struct, IBinaryOperator<double, double, double>
     {
         ThrowUtils.ThrowIfArrayNotMatch(src, dest);
         if (src.Rank == 0)
             return;
+
+        var instance = action.OrDefault();
         DoubleIndice[] indices = new DoubleIndice[src.Rank];
         for (int i = 0; i < src.Rank; i++)
         {
@@ -409,7 +425,7 @@ public static partial class UFunc
             ref var srcHead = ref src.Data[src.Offset];
             ref var destHead = ref dest.Data[dest.Offset];
             Details.Combine_Impl
-                (ref srcHead, ref destHead, indices[0], action);
+                (ref srcHead, ref destHead, indices[0], instance);
             return;
         }
         else
@@ -422,7 +438,7 @@ public static partial class UFunc
                     src.Offset + index * head.AStride];
                 ref var destRef = ref dest.Data[
                     dest.Offset + index * head.BStride];
-                Details.Combine_Impl(ref srcRef, ref destRef, indices, action);
+                Details.Combine_Impl(ref srcRef, ref destRef, indices, instance);
             });
             return;
         }
@@ -462,13 +478,15 @@ public static partial class UFunc
     }
 
     public static void Combine<TAction, TIn>(
-         MArray src, TIn alpha, MArray dest, TAction action)
+         this MArray src, TIn alpha, MArray dest, TAction? action = null)
                 where TAction : struct, ITernaryOperator<double, TIn, double, double>
         where TIn : struct
     {
         ThrowUtils.ThrowIfArrayNotMatch(src, dest);
         if (src.Rank == 0)
             return;
+
+        var instance = action.OrDefault();
         DoubleIndice[] indices = new DoubleIndice[src.Rank];
         for (int i = 0; i < src.Rank; i++)
         {
@@ -496,7 +514,7 @@ public static partial class UFunc
             ref var srcHead = ref src.Data[src.Offset];
             ref var destHead = ref dest.Data[dest.Offset];
             Details.Combine_Impl
-                (ref srcHead, alpha, ref destHead, indices[0], action);
+                (ref srcHead, alpha, ref destHead, indices[0], instance);
             return;
         }
         else
@@ -510,7 +528,7 @@ public static partial class UFunc
                 ref var destRef = ref dest.Data[
                     dest.Offset + index * head.BStride];
                 Details.Combine_Impl(
-                    ref srcRef, alpha, ref destRef, indices, action);
+                    ref srcRef, alpha, ref destRef, indices, instance);
             });
             return;
         }

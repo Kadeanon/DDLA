@@ -242,7 +242,7 @@ public class QR
             ref double tau11 = ref T[i, i];
 
             ApplyHouseHolder(SideType.Left,
-                ref tau11, a21, a12t, A22);
+                tau11, a21, a12t, A22);
 
             alphA11 = 1 - 1 / tau11;
 
@@ -338,7 +338,7 @@ public class QR
             BuildHouseHolder(ref alpha, a21v, out tau);
 
             ApplyHouseHolder(SideType.Left,
-                ref tau, a21v, a12t, A22);
+                tau, a21v, a12t, A22);
 
             var a10t = a10.GetRow(0);
             var t01v = t01.GetColumn(0);

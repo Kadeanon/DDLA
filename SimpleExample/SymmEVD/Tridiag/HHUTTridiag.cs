@@ -5,9 +5,9 @@ using DDLA.Transformations;
 
 using static DDLA.BLAS.BlasProvider;
 
-namespace SimpleExample.SymmEVD.Tradiag;
+namespace SimpleExample.SymmEVD.Tridiag;
 
-public class HHUTTradiag: TridiagBase
+public class HHUTTridiag: TridiagBase
 {
     private MatrixView T { get; }
 
@@ -15,7 +15,7 @@ public class HHUTTradiag: TridiagBase
 
     internal static int BlockSize => 128;
 
-    public HHUTTradiag(Matrix orig) : base(orig)
+    public HHUTTridiag(Matrix orig) : base(orig)
     {
         var len = orig.Rows;
 
@@ -160,8 +160,7 @@ public class HHUTTradiag: TridiagBase
                 ref double tau11 = ref TT1[i, i];
 
                 HouseHolder.ApplyHouseHolder(SideType.Left,
-                    ref tau11, a21, 
-                    AB1[i.., (i + 1)..]);
+                    tau11, a21, AB1[i.., (i + 1)..]);
 
                 alphA11 = 1 - 1 / tau11;
 

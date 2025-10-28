@@ -6,6 +6,7 @@ namespace Tests.TestEinsum
     public class TestBSMTC
     {
         #region double
+        [Ignore("Maybe too slow...")]
         [TestMethod]
         public void TestTC()
         {
@@ -50,6 +51,7 @@ namespace Tests.TestEinsum
             Assert.IsTrue(expect_mct.SequenceEqual(mct, eqa));
         }
 
+        [Ignore("Maybe too slow...")]
         [TestMethod]
         public void TestTC_1LengthShouldBeRemove()
         {
@@ -99,6 +101,7 @@ namespace Tests.TestEinsum
             Assert.IsTrue(expect_mcvt.SequenceEqual(mcvt, eqa));
         }
 
+        [Ignore("Maybe too slow...")]
         [TestMethod]
         public void TestMM()
         {

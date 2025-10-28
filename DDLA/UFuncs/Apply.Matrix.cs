@@ -6,20 +6,21 @@ namespace DDLA.UFuncs;
 
 public static partial class UFunc
 {
+
     /// <summary>
     /// x := Invoke(alpha)
     /// </summary>
     public static void Apply<TAction, TIn>(
-        MatrixView A, TIn alpha, TAction action)
+        this MatrixView src, TIn alpha, TAction? action = null)
                 where TAction : struct, IUnaryOperator<TIn, double>
         where TIn : struct
     {
-        var rowIndice = A.RowIndice;
-        var colIndice = A.ColIndice;
+        var rowIndice = src.RowIndice;
+        var colIndice = src.ColIndice;
         if (rowIndice.Length == 0 || colIndice.Length == 0)
             return;
-        Details.Apply_Impl(ref A.GetHeadRef(),
-            alpha, A.RowIndice, A.ColIndice, action);
+        Details.Apply_Impl(ref src.GetHeadRef(),
+            alpha, src.RowIndice, src.ColIndice, action.OrDefault());
     }
 
     public static partial class Details
@@ -28,7 +29,7 @@ public static partial class UFunc
             (ref double aHead, TIn alpha, 
             SingleIndice rowIndice, SingleIndice colIndice, 
             TAction action)
-                        where TAction : struct, IUnaryOperator<TIn, double>
+            where TAction : struct, IUnaryOperator<TIn, double>
             where TIn : struct
         {
             if (rowIndice.Stride < colIndice.Stride)
@@ -74,18 +75,18 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// A := Invoke(A)
+    /// src := Invoke(src)
     /// </summary>
     public static void Map<TAction>
-        (MatrixView A, TAction action)
+        (this MatrixView src, TAction? action = null)
                 where TAction : struct, IUnaryOperator<double, double>
     {
-        var rowIndice = A.RowIndice;
-        var colIndice = A.ColIndice;
+        var rowIndice = src.RowIndice;
+        var colIndice = src.ColIndice;
         if (rowIndice.Length == 0 || colIndice.Length == 0)
             return;
-        Details.Map_Impl(ref A.GetHeadRef(),
-            A.RowIndice, A.ColIndice, action);
+        Details.Map_Impl(ref src.GetHeadRef(),
+            src.RowIndice, src.ColIndice, action.OrDefault());
     }
 
     public static partial class Details
@@ -135,19 +136,19 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// A := Invoke(A, alpha)
+    /// src := Invoke(src, alpha)
     /// </summary>
     public static void Map<TAction, TIn>(
-        MatrixView A, TIn alpha, TAction action)
+        this MatrixView src, TIn alpha, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
     {
-        var rowIndice = A.RowIndice;
-        var colIndice = A.ColIndice;
+        var rowIndice = src.RowIndice;
+        var colIndice = src.ColIndice;
         if (rowIndice.Length == 0 || colIndice.Length == 0)
             return;
-        Details.Map_Impl(ref A.GetHeadRef(),
-            alpha, A.RowIndice, A.ColIndice, action);
+        Details.Map_Impl(ref src.GetHeadRef(),
+            alpha, src.RowIndice, src.ColIndice, action.OrDefault());
     }
 
     public static partial class Details
@@ -202,17 +203,17 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// B := Invoke(A)
+    /// dest := Invoke(src)
     /// </summary>
     public static void Map<TAction>(
-        MatrixView A, MatrixView B, TAction action)
+        this MatrixView src, MatrixView dest, TAction? action = null)
                 where TAction : struct, IUnaryOperator<double, double>
     {
-        var (rowIndice, colIndice) = CheckIndice(A, B);
+        var (rowIndice, colIndice) = CheckIndice(src, dest);
         if (rowIndice.Length == 0 || colIndice.Length == 0)
             return;
-        Details.Map_Impl(ref A.GetHeadRef(),
-            ref B.GetHeadRef(), rowIndice, colIndice, action);
+        Details.Map_Impl(ref src.GetHeadRef(),
+            ref dest.GetHeadRef(), rowIndice, colIndice, action.OrDefault());
     }
 
     public static partial class Details
@@ -269,20 +270,20 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// B := Invoke(A, alpha)
+    /// dest := Invoke(src, alpha)
     /// </summary>
     public static void Map<TAction, TIn>(
-        MatrixView A, TIn alpha, MatrixView B, 
-        TAction action)
+        this MatrixView src, TIn alpha, MatrixView dest,
+        TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
     {
-        var (rowIndice, colIndice) = CheckIndice(A, B);
+        var (rowIndice, colIndice) = CheckIndice(src, dest);
         if (rowIndice.Length == 0 || colIndice.Length == 0)
             return;
         Details.Map_Impl
-            (ref A.GetHeadRef(), alpha, ref B.GetHeadRef(), 
-            rowIndice, colIndice, action);
+            (ref src.GetHeadRef(), alpha, ref dest.GetHeadRef(), 
+            rowIndice, colIndice, action.OrDefault());
     }
 
     public static partial class Details
@@ -340,24 +341,24 @@ public static partial class UFunc
     }
 
     /// <summary>
-    /// B := Invoke(A, B)
+    /// dest := Invoke(src, dest)
     /// </summary>
     public static void Combine<TAction>(
-        MatrixView A, MatrixView B, TAction action)
+        this MatrixView src, MatrixView dest, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, double, double>
     {
-        var (rowIndice, colIndice) = CheckIndice(A, B);
+        var (rowIndice, colIndice) = CheckIndice(src, dest);
         if (rowIndice.Length == 0 || colIndice.Length == 0)
             return;
-        Details.Combine_Impl(ref A.GetHeadRef(),
-            ref B.GetHeadRef(), rowIndice, colIndice, action);
+        Details.Combine_Impl(ref src.GetHeadRef(),
+            ref dest.GetHeadRef(), rowIndice, colIndice, action.OrDefault());
     }
 
     public static partial class Details
     {
         public static void Combine_Impl<TAction>(
             ref double aHead, ref double bHead, 
-            DoubleIndice rowIndice, DoubleIndice colIndice, 
+            DoubleIndice rowIndice, DoubleIndice colIndice,
             TAction action)
                         where TAction : struct, IBinaryOperator<double, double, double>
         {
@@ -402,22 +403,21 @@ public static partial class UFunc
                 }
             }
         }
-
     }
 
     /// <summary>
-    /// B := Invoke(A, alpha, B)
+    /// dest := Invoke(src, alpha, dest)
     /// </summary>
     public static void Combine<TAction, TIn>(
-        MatrixView A, TIn alpha, MatrixView B, TAction action)
+        this MatrixView src, TIn alpha, MatrixView dest, TAction? action = null)
                 where TAction : struct, ITernaryOperator<double, TIn, double, double>
         where TIn : struct
     {
-        var (rowIndice, colIndice) = CheckIndice(A, B);
+        var (rowIndice, colIndice) = CheckIndice(src, dest);
         if (rowIndice.Length == 0 || colIndice.Length == 0)
             return;
-        Details.Combine_Impl(ref A.GetHeadRef(),
-            alpha, ref B.GetHeadRef(), rowIndice, colIndice, action);
+        Details.Combine_Impl(ref src.GetHeadRef(),
+            alpha, ref dest.GetHeadRef(), rowIndice, colIndice, action.OrDefault());
     }
 
     public static partial class Details

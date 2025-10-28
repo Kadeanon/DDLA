@@ -1,4 +1,5 @@
 ﻿using DDLA.Misc.Flags;
+
 using static DDLA.BLAS.BlasProvider;
 
 namespace SimpleExample.LAFFExercise.QRs;
@@ -94,6 +95,7 @@ public class HHUTQR(Matrix A) : QRBase(A)
         var qRight = A.MinDim;
 
         bool left = A.Cols % Math.Min(T.Rows, A.Cols) > 0;
+        var i = 0;
         while (aLeft > 0)
         {
             var block = Math.Min(T.Rows, aLeft);
@@ -113,7 +115,7 @@ public class HHUTQR(Matrix A) : QRBase(A)
         }
     }
 
-    internal static void ApplyQStep(MatrixView A, MatrixView T, MatrixView W, MatrixView Q, bool trans)
+    internal static void ApplyQStep(MatrixView A, MatrixView T, MatrixView W, MatrixView Q, bool trans = false)
     {
         var block = A.Cols;
         var A11 = A[..block, ..];
@@ -143,7 +145,8 @@ public class HHUTQR(Matrix A) : QRBase(A)
 
         // B -= A * Y
         // B2 -= A21 * Y
-        A21.Multify(-1, W, 1, B2);
+        DDLA.BLAS.BlasProvider.GeMM(-1, A21, W, 1, B2);
+        //A21.Multify(-1, W, 1, B2);
 
         // B1 -= A11 * Y 
         TrMM(SideType.Left, UpLo.Lower,

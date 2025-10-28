@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace DDLA.Einsum;
 
-internal struct PackParallel(in BSMBlock block, Memory<double> buffer) : IAction
+internal struct PackParallel(in BSMBlock block, Memory<double> buffer) : IActionEX
 {
     readonly MArray data = block.data;
     readonly int offset = block.offset;
@@ -25,7 +25,7 @@ internal struct PackParallel(in BSMBlock block, Memory<double> buffer) : IAction
     internal readonly void Pack()
     {
         var iBlockNum = (rowLength - 1) / rowBlock + 1;
-        ParallelHelper.For(
+        ParallelHelperEX.For(
             0, iBlockNum, in this, 4, 4);
     }
 

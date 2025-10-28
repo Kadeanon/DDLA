@@ -10,8 +10,7 @@ public static partial class BlasProvider
     /// <summary>
     /// B += Trans?(A)
     /// </summary>
-    public static void Add
-        (DiagType aDiag, UpLo aUplo, TransType aTrans,
+    public static void Add(DiagType aDiag, UpLo aUplo, TransType aTrans,
         in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);

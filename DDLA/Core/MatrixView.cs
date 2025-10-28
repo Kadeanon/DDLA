@@ -57,23 +57,7 @@ public readonly struct MatrixView : IEnumerable<double>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public MatrixView(double[] array, int offset)
-    {
-        ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual
-            (offset, array.Length, nameof(offset));
-        Data = array;
-        Offset = offset;
-        int length = array.Length - offset;
-        Rows = length;
-        Cols = 1;
-        RowStride = 1;
-        ColStride = 1;
-        DiagOffset = 0;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public MatrixView(double[] array, int rows, int cols)
+    public MatrixView(double[] array, int rows, int cols, bool colMajor = false)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(rows, nameof(rows));
@@ -84,13 +68,21 @@ public readonly struct MatrixView : IEnumerable<double>
         Offset = 0;
         Rows = rows;
         Cols = cols;
-        RowStride = cols;
-        ColStride = 1;
+        if (colMajor)
+        {
+            RowStride = 1;
+            ColStride = rows;
+        }
+        else
+        {
+            RowStride = cols;
+            ColStride = 1;
+        }
         DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public MatrixView(double[] array, int offset, int rows, int cols)
+    public MatrixView(double[] array, int offset, int rows, int cols, bool colMajor = false)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(offset, nameof(offset));
@@ -103,27 +95,16 @@ public readonly struct MatrixView : IEnumerable<double>
         Offset = offset;
         Rows = rows;
         Cols = cols;
-        RowStride = cols;
-        ColStride = 1;
-        DiagOffset = 0;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public MatrixView(double[] array, int offset, int rows, int cols, int rowStride)
-    {
-        ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfNegative(offset, nameof(offset));
-        ArgumentOutOfRangeException.ThrowIfNegative(rows, nameof(rows));
-        ArgumentOutOfRangeException.ThrowIfNegative(cols, nameof(cols));
-        int length = (rows - 1) * rowStride + cols;
-        ArgumentOutOfRangeException.ThrowIfLessThan(array.Length, offset + length,
-            nameof(array));
-        Data = array;
-        Offset = offset;
-        Rows = rows;
-        Cols = cols;
-        RowStride = rowStride;
-        ColStride = 1;
+        if (colMajor)
+        {
+            RowStride = 1;
+            ColStride = rows;
+        }
+        else
+        {
+            RowStride = cols;
+            ColStride = 1;
+        }
         DiagOffset = 0;
     }
 
@@ -172,6 +153,174 @@ public readonly struct MatrixView : IEnumerable<double>
         DiagOffset = 0;
     }
     #endregion Constructors
+
+    #region Alloc
+    public static MatrixView Create(int rows, int cols, bool uninited = false, bool colMajor = false)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(rows, nameof(rows));
+        ArgumentOutOfRangeException.ThrowIfNegative(cols, nameof(cols));
+        int length = rows * cols;
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, Array.MaxLength, "size");
+        double[] data = uninited ? GC.AllocateUninitializedArray<double>(length)
+            : new double[length];
+        return new Matrix(data, rows, cols, colMajor);
+    }
+
+    public static MatrixView Filled(int rows, int cols, double val, bool colMajor = false)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(rows, nameof(rows));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cols, nameof(cols));
+        int length = rows * cols;
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, Array.MaxLength, "size");
+        double[] data = new double[length];
+        Array.Fill(data, val);
+        return new Matrix(data, rows, cols, colMajor);
+    }
+
+    public static MatrixView Eyes(int length, bool colMajor = false)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length, nameof(length));
+        int size = length * length;
+        double[] data = new double[size];
+        var diagStride = length + 1;
+        for (int i = 0; i < length; i++)
+        {
+            data[i * diagStride] = 1.0;
+        }
+        return new Matrix(data, length, length, colMajor);
+    }
+
+    public static MatrixView Diagonals(VectorView vector, bool colMajor = false)
+    {
+        if (vector.Length == 0)
+            return new(Array.Empty<double>());
+        var result = Create(vector.Length, vector.Length, colMajor);
+        vector.CopyTo(result.Diag);
+        return result;
+    }
+
+    public static MatrixView RandomDense(int rows, int cols, Random? random = null)
+    {
+        random ??= Random.Shared;
+        ArgumentOutOfRangeException.
+            ThrowIfNegative(rows, nameof(rows));
+        ArgumentOutOfRangeException.
+            ThrowIfNegative(cols, nameof(cols));
+
+        var mat = Create(rows, cols, uninited: true);
+        var data = mat.Data;
+        for (int i = 0; i < data.Length; i++)
+            data[i] = random.NextDouble();
+        return mat;
+    }
+
+    public static MatrixView RandomTriangle(int dim,
+        UpLo uplo = UpLo.Lower, DiagType diag = DiagType.NonUnit,
+        Random? random = null)
+    {
+        random ??= Random.Shared;
+        ArgumentOutOfRangeException.
+            ThrowIfNegative(dim, nameof(dim));
+
+        var mat = Create(dim, dim, uninited: true);
+        if (uplo == UpLo.Upper)
+        {
+            for (int i = 0; i < dim; i++)
+            {
+                double sum = 0;
+                var val = random.NextDouble();
+                mat[i, i] = val;
+                for (int j = i + 1; j < dim; j++)
+                {
+                    val = random.NextDouble();
+                    mat[i, j] = val;
+                    sum += val * val;
+                    mat[j, i] = 0;
+                }
+                sum = 1 / Math.Sqrt(sum);
+                for (int j = i + 1; j < dim; j++)
+                {
+                    mat[i, j] *= sum;
+                }
+                if (diag == DiagType.Unit)
+                {
+                    mat[i, i] = 1.0;
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < dim; i++)
+            {
+                double sum = 0;
+                var val = random.NextDouble();
+                for (int j = 0; j < i; j++)
+                {
+                    mat[i, j] = val;
+                    sum += val * val;
+                    mat[j, i] = 0;
+                    val = random.NextDouble();
+                }
+                mat[i, i] = val;
+                sum = 1 / Math.Sqrt(sum);
+                for (int j = 0; j < i; j++)
+                {
+                    mat[i, j] *= sum;
+                }
+                if (diag == DiagType.Unit)
+                {
+                    mat[i, i] = 1.0;
+                }
+            }
+        }
+        return mat;
+    }
+
+    public static MatrixView RandomSPD(int dim, Random? random = null)
+    {
+        random ??= Random.Shared;
+        ArgumentOutOfRangeException.
+            ThrowIfNegative(dim, nameof(dim));
+        var r = RandomTriangle(dim, UpLo.Lower, DiagType.NonUnit, random);
+        var mat = r.EmptyLike();
+        BlasProvider.SyRk(UpLo.Lower, 1, r, 0, mat);
+        BlasProvider.MakeSy(mat, UpLo.Lower);
+        return mat;
+    }
+
+    public static MatrixView RandomSymmetric(int dim,
+        DiagType diag = DiagType.NonUnit, Random? random = null)
+    {
+        random ??= Random.Shared;
+        ArgumentOutOfRangeException.
+            ThrowIfNegativeOrZero(dim, nameof(dim));
+        var mat = Create(dim, dim, uninited: true);
+        for (int i = 0; i < dim; i++)
+        {
+            if (diag == DiagType.Unit)
+            {
+                mat[i, i] = 1.0;
+            }
+            else if (diag == DiagType.NonUnit)
+            {
+                mat[i, i] = random.NextDouble();
+            }
+            for (int j = i + 1; j < dim; j++)
+            {
+                double val = random.NextDouble();
+                mat[i, j] = val;
+                mat[j, i] = val;
+            }
+        }
+        return mat;
+    }
+
+    public MatrixView EmptyLike(bool uninited = false)
+        => Create(Rows, Cols, uninited);
+
+    public MatrixView FilledLike(double val)
+        => Filled(Rows, Cols, val);
+    #endregion Alloc
 
     #region Accessor and Slicer
     public readonly ref double this[int row, int col]
@@ -493,9 +642,6 @@ public readonly struct MatrixView : IEnumerable<double>
         }
         return Clone();
     }
-
-    public readonly MatrixView EmptyLike(bool clear = false)
-        => Matrix.Create(Rows, Cols, uninited: !clear);
     #endregion Memory
 
     #region IEnumerable

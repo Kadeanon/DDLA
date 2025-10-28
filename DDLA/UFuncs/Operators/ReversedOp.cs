@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace DDLA.UFuncs.Operators;
 
-public readonly struct ReservedOp<TOperator, T1, T2, T3>(TOperator op = default)
+public readonly struct ReversedOp<TOperator, T1, T2, T3>(TOperator? op = null)
     : IBinaryOperator<T1, T2, T3>
     where TOperator : struct, IBinaryOperator<T2, T1, T3>
     where T1 : struct
     where T2 : struct
     where T3 : struct
 {
-    TOperator Operator { get; } = op;
+    TOperator Operator { get; } = op.OrDefault();
     public T3 Invoke(T1 x, T2 y)
         => Operator.Invoke(y, x);
 

@@ -12,6 +12,8 @@ public interface IOperator
     /// Gets a value indicating whether the operation can be vectorized.
     /// </summary>
     static virtual bool IsVectorizable => false;
+
+    static virtual bool ShouldManualInitialize => false;
 }
 
 /// <summary>
@@ -146,5 +148,5 @@ public interface IAggregationOperator<T, TResult>
     /// <param name="val">The second vector to reduced.</param>
     /// <returns>The result of using the operation.</returns>
     virtual Vector<TResult> Invoke(ref readonly Vector<TResult> subResult, ref readonly Vector<T> val)
-        => throw new NotSupportedException();
+            => throw new NotSupportedException();
 }

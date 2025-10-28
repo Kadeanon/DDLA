@@ -8,7 +8,7 @@ namespace DDLA.Einsum;
 
 public readonly struct GEMMKernel
 {
-    public int mc => 2040;
+    public int mc => 510;//2040;
 
     public int nc => 512;
 

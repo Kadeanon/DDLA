@@ -24,7 +24,7 @@ public static partial class Source
  );
 
     [DllImport(BlisDLL, EntryPoint = "bli_dgemmt")]
-    public static extern void GeMMt(
+    public static extern void GeMMT(
          UpLo uploc,
          TransType transa,
          TransType transb,

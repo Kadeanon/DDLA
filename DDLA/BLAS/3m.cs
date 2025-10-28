@@ -41,7 +41,7 @@ public static partial class BlasProvider
             TransType.NoTrans,
             alpha, A, B, beta, C);
 
-    public static void GeMMt
+    public static void GeMMT
         (UpLo cUplo, TransType aTrans, 
         TransType bTrans, 
         scalar alpha,
@@ -58,7 +58,7 @@ public static partial class BlasProvider
         if (ma != m)
             throw new ArgumentException($"Dimensions of matrix A must be match!");
 
-        Source.GeMMt(cUplo,
+        Source.GeMMT(cUplo,
             aTrans,
             bTrans,
             m, k,
@@ -76,7 +76,7 @@ public static partial class BlasProvider
         in matrix B,
         scalar beta,
         in matrix C)
-        => GeMMt(cUplo, TransType.NoTrans, 
+        => GeMMT(cUplo, TransType.NoTrans, 
             TransType.NoTrans,
             alpha, A, B, beta, C);
 
@@ -204,6 +204,16 @@ public static partial class BlasProvider
     }
 
     public static void TrMM
+        (SideType aSide, UpLo aUplo,
+        DiagType aDiag,
+        in scalar alpha,
+        in matrix A,
+        in matrix B)
+        => TrMM(aSide, aUplo,
+            TransType.NoTrans, aDiag,
+            alpha, A, B);
+
+    public static void TrMM
         (SideType sidea, UpLo aUplo,
         in scalar alpha,
         in matrix A,
@@ -238,6 +248,18 @@ public static partial class BlasProvider
             in beta,
             ref C.GetHeadRef(), C.RowStride, C.ColStride);
     }
+
+    public static void TrMM3
+        (SideType aSide, UpLo aUplo, DiagType aDiag,
+        in scalar alpha,
+        in matrix A,
+        in matrix B,
+        in scalar beta,
+        in matrix C)
+        => TrMM3(aSide, aUplo,
+            TransType.NoTrans, aDiag,
+            TransType.NoTrans,
+            alpha, A, B, beta, C);
 
     public static void TrMM3
         (SideType sidea, UpLo aUplo,

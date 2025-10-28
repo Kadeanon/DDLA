@@ -1,17 +1,15 @@
-﻿using DDLA.BLAS;
-using DDLA.Misc.Flags;
-
+﻿using DDLA.Misc.Flags;
 using static DDLA.BLAS.BlasProvider;
 
-namespace SimpleExample.SymmEVD.Tradiag;
+namespace SimpleExample.SymmEVD.Tridiag;
 
-public class HHUnbTradiag: TridiagBase
+public class HHUnbTridiag : TridiagBase
 {
     public override MatrixView Q { get; }
 
     public VectorView Taus { get; }
 
-    public HHUnbTradiag(Matrix orig) : base(orig)
+    public HHUnbTridiag(Matrix orig) : base(orig)
     {
         var len = orig.Rows;
 
@@ -45,7 +43,7 @@ public class HHUnbTradiag: TridiagBase
         var A = Work[(i + 1).., (i + 1)..];
         var tau = Taus[i];
         // w.Length = u.Length = size - i - 1
-        VectorView w = Diag[(i + 1)..];
+        var w = Diag[(i + 1)..];
         SyMV(UpLo.Lower, 1, A, u, 0, w);
         var beta = w * u / 2;
         Axpy(-beta / tau, u, w);
@@ -57,7 +55,7 @@ public class HHUnbTradiag: TridiagBase
         var u = Work[(i + 1).., i];
         var H = Q[.., (i + 1)..];
         var tau = Taus[i];
-        VectorView v = Work[0, ..];
+        var v = Work[0, ..];
         GeMV(1.0, H, u, 0.0, v);
         GeR(-1 / tau, v, u, H);
     }
@@ -85,7 +83,7 @@ public class HHUnbTradiag: TridiagBase
         double neg_alpha = double.CopySign(lenx, chi);
         double scale = chi + neg_alpha;
 
-        BlasProvider.InvScal(scale, xLast);
+        InvScal(scale, xLast);
         double scaledLenLast = lenLast / Math.Abs(scale);
 
         chi = 1;

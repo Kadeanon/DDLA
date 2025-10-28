@@ -7,7 +7,14 @@ namespace DDLA.BLAS;
 
 public static partial class Source
 {
-    public const string BlisDLL = "Native/AOCL-LibBlis-Win-MT-dll";
+    public const string DLLName =
+#if !NativeBlis
+        "libblis.4";
+#else
+        "AOCL-LibBlis-Win-MT-dll";
+#endif
+
+    public const string BlisDLL = $"Native/{DLLName}";
 
     [DllImport(BlisDLL, EntryPoint = "bli_dasumv")]
     public static extern void Asum(

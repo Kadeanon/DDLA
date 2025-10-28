@@ -31,7 +31,7 @@ public struct MaxAggregationOperator<T>
     public static bool IsVectorizable => Vector<T>.IsSupported;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Vector<T> Invoke(ref readonly Vector<T> x, ref readonly Vector<T> y)
+    public readonly Vector<T> Invoke(ref readonly Vector<T> x, ref readonly Vector<T> y)
         => Vector.ConditionalSelect(Vector.Equals(x, x),
                 Vector.ConditionalSelect(Vector.Equals(y, y),
                     Vector.ConditionalSelect(Vector.Equals(x, y),

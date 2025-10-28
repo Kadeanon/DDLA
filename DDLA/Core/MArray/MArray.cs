@@ -1,5 +1,6 @@
 ﻿using DDLA.BLAS;
 using DDLA.Misc;
+using DDLA.Misc.Flags;
 using DDLA.Misc.Pools;
 using DDLA.Utilities;
 using System.Runtime.CompilerServices;
@@ -405,4 +406,29 @@ public partial class MArray
             Strides[0], Strides[1]);
     }
     #endregion Lowering
+
+    #region From LA
+    public static MArray FromVector(Vector vector)
+    {
+        return new MArray(vector.Data, vector.Offset,
+            [vector.Length], [vector.Stride]);
+    }
+
+    public static MArray FromMatrix(MatrixView matrix, TransType trans = TransType.NoTrans)
+    {
+        var rows = matrix.Rows;
+        var cols = matrix.Cols;
+        var rowStride = matrix.RowStride;
+        var colStride = matrix.ColStride;
+
+        if (trans.HasFlag(TransType.OnlyTrans))
+        {
+            (rows, cols) = (cols, rows);
+            (rowStride, colStride) = (colStride, rowStride);
+        }
+
+        return new MArray(matrix.Data, matrix.Offset,
+            [rows, cols], [rowStride, colStride]);
+    }
+    #endregion From LA
 }

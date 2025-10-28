@@ -2,11 +2,11 @@
 
 namespace DDLA.Utilities;
 
-internal static class ParallelHelper
+public static class ParallelHelperEX
 {/// <summary>
  /// Executes a specified action in an optimized parallel loop.
  /// </summary>
- /// <typeparam name="TAction">The type of action (implementing <see cref="IAction"/>) to invoke for each iteration index.</typeparam>
+ /// <typeparam name="TAction">The type of action (implementing <see cref="IActionEX"/>) to invoke for each iteration index.</typeparam>
  /// <param name="start">The starting iteration index.</param>
  /// <param name="end">The final iteration index (exclusive).</param>
  /// <param name="action">The <typeparamref name="TAction"/> instance representing the action to invoke.</param>
@@ -15,8 +15,8 @@ internal static class ParallelHelper
  /// should be parallelized, or to a greater number if each individual invocation is fast
  /// enough that it is more efficient to set a lower bound per each running thread.
  /// </param>
-    internal static void For<TAction>(int start, int end, in TAction action, int minimumActionsPerThread, int maxDegreeOfParallelism)
-        where TAction : struct, IAction
+    public static void For<TAction>(int start, int end, in TAction action, int minimumActionsPerThread, int maxDegreeOfParallelism)
+        where TAction : struct, IActionEX
     {
 
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(minimumActionsPerThread,
@@ -61,7 +61,7 @@ internal static class ParallelHelper
 
     // Wrapping struct acting as explicit closure to execute the processing batches
     private readonly struct ActionInvoker<TAction>
-        where TAction : struct, IAction
+        where TAction : struct, IActionEX
     {
         private readonly int start;
         private readonly int end;
@@ -104,7 +104,7 @@ internal static class ParallelHelper
 /// A contract for actions being executed with an input index.
 /// </summary>
 /// <remarks>If the <see cref="Invoke"/> method is small enough, it is highly recommended to mark it with <see cref="MethodImplOptions.AggressiveInlining"/>.</remarks>
-public interface IAction
+public interface IActionEX
 {
     /// <summary>
     /// Executes the action associated with a specific index.

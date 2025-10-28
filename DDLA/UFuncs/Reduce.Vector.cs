@@ -523,4 +523,36 @@ public static partial class UFunc
             }
         }
     }
+
+    public static double ZipSum<TZipper>(VectorView x, VectorView y)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, SumOperator<double>>(x, y);
+
+    public static double ZipSum<TZipper>(VectorView x, VectorView y, ref SumOperator<double> reducer)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, SumOperator<double>>(x, y, new(), ref reducer);
+
+    public static double ZipProduct<TZipper>(VectorView x, VectorView y)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, ProductOperator<double>>(x, y);
+
+    public static double ZipProduct<TZipper>(VectorView x, VectorView y, ref ProductOperator<double> reducer)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, ProductOperator<double>>(x, y, new(), ref reducer);
+
+    public static double ZipMax<TZipper>(VectorView x, VectorView y)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, MaxAggregationOperator<double>>(x, y);
+
+    public static double ZipMax<TZipper>(VectorView x, VectorView y, ref MaxAggregationOperator<double> reducer)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, MaxAggregationOperator<double>>(x, y, new(), ref reducer);
+
+    public static double ZipMin<TZipper>(VectorView x, VectorView y)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, MinAggregationOperator<double>>(x, y);
+
+    public static double ZipMin<TZipper>(VectorView x, VectorView y, ref MinAggregationOperator<double> reducer)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, MinAggregationOperator<double>>(x, y, new(), ref reducer);
 }

@@ -4,6 +4,7 @@
 using DDLA.BLAS;
 using DDLA.Core;
 using DDLA.Misc.Flags;
+using DDLA.Misc.Pools;
 
 namespace DDLA.Transformations;
 
@@ -71,8 +72,8 @@ public static class HouseHolder
     /// <param name="u2">The last part of u.</param>
     /// <param name="A">The matrix A.</param>
     public static void ApplyHouseHolder(SideType side,
-        ref double tau, VectorView u2, MatrixView A)
-        => ApplyHouseHolder(side, ref tau, u2, A[0, ..], A[1.., ..]);
+        double tau, VectorView u2, MatrixView A)
+        => ApplyHouseHolder(side, tau, u2, A[0, ..], A[1.., ..]);
 
     /// <summary>
     /// Apply a HouseHolder transformation H to a matrix A.
@@ -92,11 +93,12 @@ public static class HouseHolder
     /// <param name="a1">The top part of A.</param>
     /// <param name="A2">The bottom part of A.</param>
     public static void ApplyHouseHolder(SideType side,
-        ref double tau, VectorView u2, VectorView a1, MatrixView A2)
+        double tau, VectorView u2, VectorView a1, MatrixView A2)
     {
-        if (a1.Length == 0 || tau == 0.0)
+        var len = a1.Length;
+        if (len == 0 || tau == 0.0)
             return;
-        var w = Vector.Create(a1.Length);
+        using var handle = InternelPool.TakeVector(len, out var w);
         a1.CopyTo(w);
 
         if (side == SideType.Left)

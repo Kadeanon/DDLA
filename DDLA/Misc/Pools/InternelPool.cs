@@ -75,7 +75,7 @@ namespace DDLA.Misc.Pools
         {
             var handle = new ArrayHandle<double, ArrayPool<double>>
                 (Instance.Pool, length, out var data);
-            vec = new(data);
+            vec = new(data, 0, length);
             if (init) vec.Clear();
             return new(Instance, handle);
         }
@@ -114,6 +114,26 @@ namespace DDLA.Misc.Pools
                 mat = new(data, 0, rows, cols, 1, rows);
             mat.Fill(fill);
             return new(Instance, handle);
+        }
+
+        public static ArrayHandle TakeArraySegement(int length,
+            out ArraySegment<double> seg, bool init = true)
+        {
+            var handle = new ArrayHandle<double, ArrayPool<double>>
+                (Instance.Pool, length, out var data);
+            seg = new ArraySegment<double>(data, 0, length);
+            if (init) seg.AsSpan().Clear();
+            return handle;
+        }
+
+        public static ArrayHandle TakeArraySegement(int length,
+            out ArraySegment<double> seg, double fill)
+        {
+            var handle = new ArrayHandle<double, ArrayPool<double>>
+                (Instance.Pool, length, out var data);
+            seg = new ArraySegment<double>(data, 0, length);
+            seg.AsSpan().Fill(fill);
+            return handle;
         }
     }
 

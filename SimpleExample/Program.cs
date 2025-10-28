@@ -1,6 +1,5 @@
 ﻿global using DDLA.Core;
-using SimpleExample.LAFFExercise.LLS;
-using SimpleExample.LAFFExercise.QRs;
+using SimpleExample.SVD;
 using SimpleExample.SymmEVD;
 
 namespace SimpleExample;
@@ -9,10 +8,11 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        int cols = 977;
-        int rows = cols + 4;
+        int cols = 1025;
+        int rows = cols;
         //QRBase.TestQRFamily(rows, cols);
         //LLSBase.TestLLSFamily(rows, cols);
-        TestSEvd.Test(cols);
+        //TestSEvd.Test(cols);
+        TestSvd.Test(rows, cols);
     }
 }
