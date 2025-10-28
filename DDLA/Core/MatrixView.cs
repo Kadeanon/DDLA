@@ -475,7 +475,7 @@ public readonly struct MatrixView : IEnumerable<double>
         }
     }
 
-    public MatrixView T => new(Data, Offset, Cols, Rows, ColStride, RowStride);
+    public MatrixView T => new(Data, Offset, Cols, Rows, ColStride, RowStride,-DiagOffset);
 
     internal readonly ref double AtUncheck(int row, int col)
         => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(Data),

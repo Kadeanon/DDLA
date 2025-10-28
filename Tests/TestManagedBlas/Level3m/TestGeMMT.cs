@@ -39,8 +39,6 @@ public class TestGeMMT
     public void TestSimpleUpperGeMMT()
     {
         int colStride = 4;
-        var size = 4;
-        var reds = 4;
         var left =
             CreateMatrixStrideRandom(size, reds, colStride);
         var right =
@@ -81,8 +79,6 @@ public class TestGeMMT
     public void TestSimpleLowerGeMMT()
     {
         int colStride = 4;
-        var size = 4;
-        var reds = 4;
         var left =
             CreateMatrixStrideRandom(size, reds, colStride);
         var right =
