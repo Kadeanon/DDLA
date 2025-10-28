@@ -8,7 +8,8 @@ using System.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
+
+using BlasProvider = DDLA.BLAS.Managed.BlasProvider;
 
 namespace DDLA.Core;
 
@@ -845,8 +846,6 @@ public readonly struct MatrixView : IEnumerable<double>
         int m = left.Rows;
         int n = right.Cols;
         var dest = Matrix.Create(m, n, uninited: true);
-        left = left.MakeRowMajor();
-        right = right.MakeRowMajor();
         BlasProvider.GeMM(1.0, left, right, 0.0, dest);
         return dest;
     }
@@ -977,7 +976,7 @@ public readonly struct MatrixView : IEnumerable<double>
         => BlasProvider.SyR2(uplo, alpha, x, y, this);
 
     public readonly void ShiftDiag(double alpha)
-        => BlasProvider.ShiftDiag(alpha, in this); 
+        => BlasProvider.Shift(alpha, Diag); 
     
     public readonly void SwapCol(int i, int j)
         => BlasProvider.Swap(GetColumn(i), GetColumn(j));

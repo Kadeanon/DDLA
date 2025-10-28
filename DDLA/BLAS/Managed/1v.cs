@@ -416,6 +416,9 @@ public static partial class BlasProvider
         }
     }
 
+    public static void Shift(scalar alpha, in vector x)
+        => x.Map<AddOperator<scalar>, scalar>(alpha);
+
     public static void Xpby(in vector x, scalar beta, in vector y)
         => x.Combine<DoubleXpbyOperator, scalar>(beta, y);
 

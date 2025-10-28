@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 
 namespace DDLA.Core;
 
+using BlasProvider = DDLA.BLAS.Managed.BlasProvider;
 
 [DebuggerDisplay("{(long)Length}x1")]
 [DebuggerTypeProxy(typeof(VectorDebugView))]

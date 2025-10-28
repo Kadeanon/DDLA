@@ -1,10 +1,8 @@
-﻿using DDLA.UFuncs.Operators;
-using DDLA.Misc.Flags;
-
-using scalar = double;
-using vector = DDLA.Core.VectorView;
-using matrix = DDLA.Core.MatrixView;
+﻿using DDLA.Misc.Flags;
 using DDLA.UFuncs;
+using DDLA.UFuncs.Operators;
+using matrix = DDLA.Core.MatrixView;
+using scalar = double;
 
 namespace DDLA.BLAS.Managed;
 
@@ -18,7 +16,60 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Details.Combine<AddOperator<scalar>>(aDiag, aUplo, aTrans, A, B);
+
+        var AEffective = A;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        var BEffective = B;
+        var invoker = UFunc.OrDefault<AddOperator<scalar>>(null);
+        if (B.RowStride < B.ColStride)
+        {
+            AEffective = AEffective.T;
+            BEffective = BEffective.T;
+            aUplo = Transpose(aUplo);
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (aUplo is UpLo.Dense)
+        {
+            AEffective.Combine<AddOperator<scalar>>(BEffective, invoker);
+        }
+        else if (aUplo is UpLo.Lower or UpLo.Upper)
+        {
+            if (aUplo is UpLo.Upper)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var start = A.DiagOffset + i;
+                    if (aDiag is DiagType.Unit)
+                        start++;
+                    start = Math.Max(start, 0);
+                    if (start >= n)
+                        break;
+                    var rowA = AEffective.SliceRowUncheck(i, start);
+                    var rowB = BEffective.SliceRowUncheck(i, start);
+                    rowA.Combine<AddOperator<scalar>>(rowB, invoker);
+                }
+            }
+            else // if (aUplo is UpLo.Lower)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var end = A.DiagOffset + i + 1;
+                    if (aDiag is DiagType.Unit)
+                        end--;
+                    end = Math.Min(end, n);
+                    if (end <= 0)
+                        continue;
+                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
+                    rowA.Combine<AddOperator<scalar>>(rowB, invoker);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -38,8 +89,60 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Details.Combine<MultiplyAddOperator<scalar>, scalar>(aDiag, aUplo, aTrans,
-            alpha, A, B);
+
+        var AEffective = A;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        var BEffective = B;
+        var invoker = UFunc.OrDefault<MultiplyAddOperator<scalar>>(null);
+        if (B.RowStride < B.ColStride)
+        {
+            AEffective = AEffective.T;
+            BEffective = BEffective.T;
+            aUplo = Transpose(aUplo);
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (aUplo is UpLo.Dense)
+        {
+            AEffective.Combine<MultiplyAddOperator<scalar>, scalar>(alpha, BEffective, invoker);
+        }
+        else if (aUplo is UpLo.Lower or UpLo.Upper)
+        {
+            if (aUplo is UpLo.Upper)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var start = A.DiagOffset + i;
+                    if (aDiag is DiagType.Unit)
+                        start++;
+                    start = Math.Max(start, 0);
+                    if (start >= n)
+                        break;
+                    var rowA = AEffective.SliceRowUncheck(i, start);
+                    var rowB = BEffective.SliceRowUncheck(i, start);
+                    rowA.Combine<MultiplyAddOperator<scalar>, scalar>(alpha, rowB, invoker);
+                }
+            }
+            else // if (aUplo is UpLo.Lower)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var end = A.DiagOffset + i + 1;
+                    if (aDiag is DiagType.Unit)
+                        end--;
+                    end = Math.Min(end, n);
+                    if (end <= 0)
+                        continue;
+                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
+                    rowA.Combine<MultiplyAddOperator<scalar>, scalar>(alpha, rowB, invoker);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -55,12 +158,65 @@ public static partial class BlasProvider
     /// B = Trans?(A)
     /// </summary>
     public static void Copy
-        (DiagType aDiag, UpLo aUplo, TransType aTrans,
+        (DiagType aDiag, UpLo aUplo, TransType aTrans, int diagOffset,
         in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Details.Map<IdentityOperator<scalar>>(aDiag, aUplo, aTrans, A, B);
+
+        var AEffective = A;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        var BEffective = B;
+        var invoker = UFunc.OrDefault<IdentityOperator<scalar>>(null);
+        if (B.RowStride < B.ColStride)
+        {
+            AEffective = AEffective.T;
+            BEffective = BEffective.T;
+            aUplo = Transpose(aUplo);
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (aUplo is UpLo.Dense)
+        {
+            AEffective.Map<IdentityOperator<scalar>>(BEffective, invoker);
+        }
+        else if (aUplo is UpLo.Lower or UpLo.Upper)
+        {
+            if (aUplo is UpLo.Upper)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var start = A.DiagOffset + i;
+                    if (aDiag is DiagType.Unit)
+                        start++;
+                    start = Math.Max(start, 0);
+                    if (start >= n)
+                        break;
+                    var rowA = AEffective.SliceRowUncheck(i, start);
+                    var rowB = BEffective.SliceRowUncheck(i, start);
+                    rowA.Map<IdentityOperator<scalar>>(rowB, invoker);
+                }
+            }
+            else // if (aUplo is UpLo.Lower)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var end = A.DiagOffset + i + 1;
+                    if (aDiag is DiagType.Unit)
+                        end--;
+                    end = Math.Min(end, n);
+                    if (end <= 0)
+                        continue;
+                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
+                    rowA.Map<IdentityOperator<scalar>>(rowB, invoker);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -68,7 +224,7 @@ public static partial class BlasProvider
     /// </summary>
     public static void Copy(in matrix A, in matrix B)
         => Copy(DiagType.NonUnit,
-            UpLo.Dense, TransType.NoTrans,
+            UpLo.Dense, TransType.NoTrans, 0,
             A, B);
 
     /// <summary>
@@ -96,7 +252,52 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckUploMatLength(A, aUplo);
         if (m == 0 || n == 0) return;
-        Details.Map<MultiplyOperator<scalar>, scalar>(aUplo, alpha, A);
+
+        var AEffective = A;
+        var invoker = UFunc.OrDefault<MultiplyOperator<scalar>>(null);
+        if (A.RowStride < A.ColStride)
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (alpha == 0.0)
+        {
+            Set(DiagType.NonUnit, aUplo, 0.0, A);
+            return;
+        }
+
+        if (aUplo is UpLo.Dense)
+        {
+            AEffective.Map<MultiplyOperator<scalar>, scalar>(alpha, invoker);
+        }
+        else if (aUplo is UpLo.Upper)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                var start = Math.Max(A.DiagOffset + i, 0);
+                if (start >= n)
+                    break;
+                var rowA = AEffective.SliceRowUncheck(i, start);
+                rowA.Map<MultiplyOperator<scalar>, scalar>(alpha, invoker);
+            }
+        }
+        else if (aUplo is UpLo.Lower)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                var end = Math.Min(n, A.DiagOffset + i + 1);
+                if (end <= 0)
+                    continue;
+                var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                rowA.Map<MultiplyOperator<scalar>, scalar>(alpha, invoker);
+            }
+        }
+        else
+        {
+            //A.Diag.Map<MultiplyOperator<scalar>, scalar>(alpha, invoker);
+        }
     }
 
     /// <summary>
@@ -114,8 +315,61 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Details.Map<MultiplyOperator<scalar>, scalar>(aDiag, aUplo, aTrans,
-            alpha, A, B);
+
+
+        var AEffective = A;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        var BEffective = B;
+        var invoker = UFunc.OrDefault<MultiplyOperator<scalar>>(null);
+        if (B.RowStride < B.ColStride)
+        {
+            AEffective = AEffective.T;
+            BEffective = BEffective.T;
+            aUplo = Transpose(aUplo);
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (aUplo is UpLo.Dense)
+        {
+            AEffective.Map<MultiplyOperator<scalar>, scalar>(alpha, BEffective, invoker);
+        }
+        else if (aUplo is UpLo.Lower or UpLo.Upper)
+        {
+            if (aUplo is UpLo.Upper)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var start = A.DiagOffset + i;
+                    if (aDiag is DiagType.Unit)
+                        start++;
+                    start = Math.Max(start, 0);
+                    if (start >= n)
+                        break;
+                    var rowA = AEffective.SliceRowUncheck(i, start);
+                    var rowB = BEffective.SliceRowUncheck(i, start);
+                    rowA.Map<MultiplyOperator<scalar>, scalar>(alpha, rowB, invoker);
+                }
+            }
+            else // if (aUplo is UpLo.Lower)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var end = A.DiagOffset + i + 1;
+                    if (aDiag is DiagType.Unit)
+                        end--;
+                    end = Math.Min(end, n);
+                    if (end <= 0)
+                        continue;
+                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
+                    rowA.Map<MultiplyOperator<scalar>, scalar>(alpha, rowB, invoker);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -141,7 +395,51 @@ public static partial class BlasProvider
     {
         var (m, n) = GetLengths(A);
         if (m == 0 || n == 0) return;
-        Details.Set_Kernel(aDiag, aUplo, alpha, A, diag);
+
+
+        var AEffective = A;
+        var invoker = UFunc.OrDefault<IdentityOperator<scalar>>(null);
+        if (A.RowStride < A.ColStride)
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (aUplo is UpLo.Dense)
+        {
+            AEffective.Apply<IdentityOperator<scalar>, scalar>(alpha, invoker);
+        }
+        else if (aUplo is UpLo.Upper)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                var start = Math.Max(A.DiagOffset + i, 0);
+                if (aDiag is DiagType.Unit)
+                {
+                    start++;
+                }
+                if (start >= n)
+                    break;
+                var rowA = AEffective.SliceRowUncheck(i, start);
+                rowA.Apply<IdentityOperator<scalar>, scalar>(alpha, invoker);
+            }
+        }
+        else if (aUplo is UpLo.Lower)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                var end = Math.Min(n, A.DiagOffset + i + 1);
+                if (aDiag is DiagType.Unit)
+                {
+                    end--;
+                }
+                if (end <= 0)
+                    continue;
+                var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                rowA.Apply<IdentityOperator<scalar>, scalar>(alpha, invoker);
+            }
+        }
     }
 
     /// <summary>
@@ -152,57 +450,6 @@ public static partial class BlasProvider
         => Set(DiagType.NonUnit, UpLo.Dense,
             alpha, A, A.DiagOffset);
 
-    public static partial class Details
-    {
-        public static void Set_Kernel(DiagType aDiag, UpLo aUplo,
-            scalar alpha, in matrix A, int diag)
-        {
-            var AEffective = A;
-            var invoker = UFunc.OrDefault<IdentityOperator<scalar>>(null);
-            if (A.RowStride < A.ColStride)
-            {
-                aUplo = Transpose(aUplo);
-                AEffective = A.T;
-            }
-            var (m, n) = GetLengths(AEffective);
-
-            if (aUplo is UpLo.Dense)
-            {
-                AEffective.Apply<IdentityOperator<scalar>, scalar>(alpha, invoker);
-            }
-            else if (aUplo is UpLo.Upper)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var start = Math.Max(A.DiagOffset + i, 0);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        start++;
-                    }
-                    if (start >= n)
-                        break;
-                    var rowA = AEffective.SliceRowUncheck(i, start);
-                    rowA.Apply<IdentityOperator<scalar>, scalar>(alpha, invoker);
-                }
-            }
-            else if (aUplo is UpLo.Lower)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var end = Math.Min(n, A.DiagOffset + i + 1);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        end--;
-                    }
-                    if (end <= 0)
-                        continue;
-                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
-                    rowA.Apply<IdentityOperator<scalar>, scalar>(alpha, invoker);
-                }
-            }
-        }
-    }
-
     /// <summary>
     /// B -= Trans?(A)
     /// </summary>
@@ -212,7 +459,61 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Details.Combine<ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>>(aDiag, aUplo, aTrans, A, B);
+
+
+        var AEffective = A;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        var BEffective = B;
+        var invoker = UFunc.OrDefault<ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>>(null);
+        if (B.RowStride < B.ColStride)
+        {
+            AEffective = AEffective.T;
+            BEffective = BEffective.T;
+            aUplo = Transpose(aUplo);
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (aUplo is UpLo.Dense)
+        {
+            AEffective.Combine<ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>>(BEffective, invoker);
+        }
+        else if (aUplo is UpLo.Lower or UpLo.Upper)
+        {
+            if (aUplo is UpLo.Upper)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var start = A.DiagOffset + i;
+                    if (aDiag is DiagType.Unit)
+                        start++;
+                    start = Math.Max(start, 0);
+                    if (start >= n)
+                        break;
+                    var rowA = AEffective.SliceRowUncheck(i, start);
+                    var rowB = BEffective.SliceRowUncheck(i, start);
+                    rowA.Combine<ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>>(rowB, invoker);
+                }
+            }
+            else // if (aUplo is UpLo.Lower)
+            {
+                for (int i = 0; i < m; i++)
+                {
+                    var end = A.DiagOffset + i + 1;
+                    if (aDiag is DiagType.Unit)
+                        end--;
+                    end = Math.Min(end, n);
+                    if (end <= 0)
+                        continue;
+                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
+                    rowA.Combine<ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>>(rowB, invoker);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -222,372 +523,4 @@ public static partial class BlasProvider
         => Sub(DiagType.NonUnit,
             UpLo.Dense, TransType.NoTrans,
             A, B);
-
-    public static partial class Details
-    {
-        public static void Map<TAction, TScalar>(UpLo aUplo,
-             TScalar alpha, in matrix A)
-            where TAction: struct, IBinaryOperator<scalar, TScalar, scalar>
-            where TScalar: struct
-        {
-            var AEffective = A;
-            var invoker = UFunc.OrDefault<TAction>(null);
-            if (A.RowStride < A.ColStride)
-            {
-                aUplo = Transpose(aUplo);
-                AEffective = A.T;
-            }
-            var (m, n) = GetLengths(AEffective);
-
-            if (aUplo is UpLo.Dense)
-            {
-                AEffective.Map<TAction, TScalar>(alpha, invoker);
-            }
-            else if (aUplo is UpLo.Upper)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var start = Math.Max(A.DiagOffset + i, 0);
-                    if (start >= n)
-                        break;
-                    var rowA = AEffective.SliceRowUncheck(i, start);
-                    rowA.Map<TAction, TScalar>(alpha, invoker);
-                }
-            }
-            else if (aUplo is UpLo.Lower)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var end = Math.Min(n, A.DiagOffset + i + 1);
-                    if (end <= 0)
-                        continue;
-                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
-                    rowA.Map<TAction, TScalar>(alpha, invoker);
-                }
-            }
-            else
-            {
-                A.Diag.Map<TAction, TScalar>(alpha, invoker);
-            }
-        }
-
-        public static void Map<TAction>(DiagType aDiag, UpLo aUplo, TransType aTrans,
-            in matrix A, in matrix B)
-            where TAction : struct, IUnaryOperator<scalar, scalar>
-        {
-            var AEffective = A;
-            var BEffective = B;
-            var invoker = UFunc.OrDefault<TAction>(null);
-            if (B.RowStride < B.ColStride)
-            {
-                AEffective = A.T;
-                BEffective = B.T;
-                aUplo = Transpose(aUplo);
-                aTrans = Transpose(aTrans);
-            }
-            if (aTrans.HasFlag(TransType.OnlyTrans))
-            {
-                aUplo = Transpose(aUplo);
-                AEffective = A.T;
-            }
-            var (m, n) = GetLengths(AEffective);
-
-            if (aUplo is UpLo.Dense)
-            {
-                AEffective.Map<TAction>(BEffective, invoker);
-            }
-            else if (aUplo is UpLo.Upper)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var start = Math.Max(A.DiagOffset + i, 0);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, start);
-                        diagRefB = invoker.Invoke(1.0);
-                        start++;
-                    }
-                    if (start >= n)
-                        break;
-                    var rowA = AEffective.SliceRowUncheck(i, start);
-                    var rowB = BEffective.SliceRowUncheck(i, start);
-                    rowA.Map<TAction>(rowB, invoker);
-                }
-            }
-            else if (aUplo is UpLo.Lower)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var end = Math.Min(n, A.DiagOffset + i + 1);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, end - 1);
-                        diagRefB = invoker.Invoke(1.0);
-                        end--;
-                    }
-                    if (end <= 0)
-                        continue;
-                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
-                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
-                    rowA.Map<TAction>(rowB, invoker);
-                }
-            }
-            else
-            {
-                if (aDiag is DiagType.Unit)
-                {
-                    var diag = B.Diag;
-                    for (int i = 0; i < diag.Length; i++)
-                    {
-                        ref var diagRefB = ref diag.AtUncheck(i);
-                        diagRefB = invoker.Invoke(1.0);
-                    }
-                }
-                else
-                {
-                    A.Diag.Map<TAction>(B.Diag, invoker);
-                }
-            }
-        }
-
-        public static void Map<TAction, TScalar>(DiagType aDiag, UpLo aUplo, TransType aTrans,
-            TScalar alpha, in matrix A, in matrix B)
-            where TAction : struct, IBinaryOperator<scalar, TScalar, scalar>
-            where TScalar : struct
-        {
-            var AEffective = A;
-            var BEffective = B;
-            var invoker = UFunc.OrDefault<TAction>(null);
-            if (B.RowStride < B.ColStride)
-            {
-                AEffective = A.T;
-                BEffective = B.T;
-                aUplo = Transpose(aUplo);
-                aTrans = Transpose(aTrans);
-            }
-            if (aTrans.HasFlag(TransType.OnlyTrans))
-            {
-                aUplo = Transpose(aUplo);
-                AEffective = A.T;
-            }
-            var (m, n) = GetLengths(AEffective);
-
-            if (aUplo is UpLo.Dense)
-            {
-                AEffective.Map<TAction, TScalar>(alpha, BEffective, invoker);
-            }
-            else if (aUplo is UpLo.Upper)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var start = Math.Max(A.DiagOffset + i, 0);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, start);
-                        diagRefB = invoker.Invoke(1.0, alpha);
-                        start++;
-                    }
-                    if (start >= n)
-                        break;
-                    var rowA = AEffective.SliceRowUncheck(i, start);
-                    var rowB = BEffective.SliceRowUncheck(i, start);
-                    rowA.Map<TAction, TScalar>(alpha, rowB, invoker);
-                }
-            }
-            else if (aUplo is UpLo.Lower)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var end = Math.Min(n, A.DiagOffset + i + 1);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, end - 1);
-                        diagRefB = invoker.Invoke(1.0, alpha);
-                        end--;
-                    }
-                    if (end <= 0)
-                        continue;
-                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
-                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
-                    rowA.Map<TAction, TScalar>(alpha, rowB, invoker);
-                }
-            }
-            else
-            {
-                if (aDiag is DiagType.Unit)
-                {
-                    var diag = B.Diag;
-                    for (int i = 0; i < diag.Length; i++)
-                    {
-                        ref var diagRefB = ref diag.AtUncheck(i);
-                        diagRefB = invoker.Invoke(1.0, alpha);
-                    }
-                }
-                else
-                {
-                    A.Diag.Map<TAction, TScalar>(alpha, B.Diag, invoker);
-                }
-            }
-        }
-
-        public static void Combine<TAction>(DiagType aDiag, UpLo aUplo, TransType aTrans,
-            in matrix A, in matrix B)
-            where TAction : struct, IBinaryOperator<scalar, scalar, scalar>
-        {
-            var AEffective = A;
-            var BEffective = B;
-            var invoker = UFunc.OrDefault<TAction>(null);
-            if (B.RowStride < B.ColStride)
-            {
-                AEffective = A.T;
-                BEffective = B.T;
-                aUplo = Transpose(aUplo);
-                aTrans = Transpose(aTrans);
-            }
-            if (aTrans.HasFlag(TransType.OnlyTrans))
-            {
-                aUplo = Transpose(aUplo);
-                AEffective = A.T;
-            }
-            var (m, n) = GetLengths(AEffective);
-
-            if (aUplo is UpLo.Dense)
-            {
-                AEffective.Combine<TAction>(BEffective, invoker);
-            }
-            else if (aUplo is UpLo.Upper)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var start = Math.Max(A.DiagOffset + i, 0);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, start);
-                        diagRefB = invoker.Invoke(1.0, diagRefB);
-                        start++;
-                    }
-                    if (start >= n)
-                        break;
-                    var rowA = AEffective.SliceRowUncheck(i, start);
-                    var rowB = BEffective.SliceRowUncheck(i, start);
-                    rowA.Combine<TAction>(rowB, invoker);
-                }
-            }
-            else if (aUplo is UpLo.Lower)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var end = Math.Min(n, A.DiagOffset + i + 1);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, end - 1);
-                        diagRefB = invoker.Invoke(0.0, diagRefB);
-                        end--;
-                    }
-                    if (end <= 0)
-                        continue;
-                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
-                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
-                    rowA.Combine<TAction>(rowB, invoker);
-                }
-            }
-            else
-            {
-                if (aDiag is DiagType.Unit)
-                {
-                    var diag = B.Diag;
-                    for (int i = 0; i < diag.Length; i++)
-                    {
-                        ref var diagRefB = ref diag.AtUncheck(i);
-                        diagRefB = invoker.Invoke(1.0, diagRefB);
-                    }
-                }
-                else
-                {
-                    A.Diag.Combine<TAction>(B.Diag, invoker);
-                }
-            }
-        }
-
-        public static void Combine<TAction, TScalar>(DiagType aDiag, UpLo aUplo, TransType aTrans,
-            TScalar alpha, in matrix A, in matrix B)
-                where TAction : struct, ITernaryOperator<scalar, TScalar, scalar, scalar>
-                where TScalar : struct
-        {
-            var AEffective = A;
-            var BEffective = B;
-            var invoker = UFunc.OrDefault<TAction>(null);
-            if (B.RowStride < B.ColStride)
-            {
-                AEffective = A.T;
-                BEffective = B.T;
-                aUplo = Transpose(aUplo);
-                aTrans = Transpose(aTrans);
-            }
-            if (aTrans.HasFlag(TransType.OnlyTrans))
-            {
-                aUplo = Transpose(aUplo);
-                AEffective = A.T;
-            }
-            var (m, n) = GetLengths(AEffective);
-
-
-            if (aUplo is UpLo.Dense)
-            {
-                AEffective.Combine<TAction, TScalar>(alpha, BEffective, invoker);
-            }
-            else if (aUplo is UpLo.Upper)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var start = Math.Max(A.DiagOffset + i, 0);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, start);
-                        diagRefB = invoker.Invoke(1.0, alpha, diagRefB);
-                        start++;
-                    }
-                    if (start >= n)
-                        break;
-                    var rowA = AEffective.SliceRowUncheck(i, start);
-                    var rowB = BEffective.SliceRowUncheck(i, start);
-                    rowA.Combine<TAction, TScalar>(alpha, rowB, invoker);
-                }
-            }
-            else if (aUplo is UpLo.Lower)
-            {
-                for (int i = 0; i < m; i++)
-                {
-                    var end = Math.Min(n, A.DiagOffset + i + 1);
-                    if (aDiag is DiagType.Unit)
-                    {
-                        ref var diagRefB = ref BEffective.AtUncheck(i, end - 1);
-                        diagRefB = invoker.Invoke(1.0, alpha, diagRefB);
-                        end--;
-                    }
-                    if (end <= 0)
-                        continue;
-                    var rowA = AEffective.SliceRowUncheck(i, 0, end);
-                    var rowB = BEffective.SliceRowUncheck(i, 0, end);
-                    rowA.Combine<TAction, TScalar>(alpha, rowB, invoker);
-                }
-            }
-            else
-            {
-                if (aDiag is DiagType.Unit)
-                {
-                    var diag = B.Diag;
-                    for (int i = 0; i < diag.Length; i++)
-                    {
-                        ref var diagRefB = ref diag.AtUncheck(i);
-                        diagRefB = invoker.Invoke(1.0, alpha, diagRefB);
-                    }
-                }
-                else
-                {
-                    A.Diag.Combine<TAction, TScalar>(alpha, B.Diag, invoker);
-                }
-            }
-        }
-    }
 }

@@ -10,6 +10,7 @@ using SIMDVec = System.Numerics.Vector<double>;
 using SIMDExt = System.Numerics.Vector;
 using DDLA.Utilities;
 using DistIL.Attributes;
+using DDLA.UFuncs;
 
 namespace DDLA.BLAS;
 
@@ -134,6 +135,9 @@ public static partial class BlasProvider
         if (length == 0) return;
         Source.Swap(length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
     }
+
+    public static void Shift(scalar alpha, in vector x)
+        => x.Map<AddOperator<scalar>, scalar>(alpha);
 
     public static void Xpby(in vector x, scalar beta, in vector y)
     {

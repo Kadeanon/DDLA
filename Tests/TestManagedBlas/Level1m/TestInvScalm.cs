@@ -31,7 +31,19 @@ public class TestInvScalm
         var Am = CopyMatrix(Ain);
         var Ae = CopyMatrix(Ain);
         BlasProvider.InvScal(aUplo, alpha, Am);
-        BlisProvider.InvScal(aUplo, alpha, Ae);
+        for (int i = 0; i < Ain.Rows; i++)
+        {
+            for (int j = 0; j < Ain.Cols; j++)
+            {
+                ref var val = ref Ae[i, j];
+                if (aUplo == UpLo.Dense ||
+                    (aUplo == UpLo.Upper && j >= i) ||
+                    (aUplo == UpLo.Lower && i >= j))
+                {
+                    val /= alpha;
+                }
+            }
+        }
         var diff = Ae - Am;
         var norm = diff.View.Nrm1();
         Assert.AreEqual(0, norm, 2e-5);

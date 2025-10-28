@@ -91,7 +91,7 @@ public class TestCopym
         // Fill destination with distinct values to ensure overwritten properly
         BOut.Fill(-123.456);
         var Be = CopyMatrix(BOut);
-        BlasProvider.Copy(aDiag, aUplo, aTrans, A, BOut);
+        BlasProvider.Copy(aDiag, aUplo, aTrans, 0, A, BOut);
         BlisProvider.Copy(aDiag, aUplo, aTrans, A, Be);
         var diff = Be - BOut;
         var norm = diff.View.Nrm1();

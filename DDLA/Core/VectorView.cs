@@ -10,6 +10,7 @@ using System.Text;
 
 namespace DDLA.Core;
 
+using BlasProvider = DDLA.BLAS.Managed.BlasProvider;
 
 [DebuggerDisplay("{Length}x1")]
 [DebuggerTypeProxy(typeof(VectorDebugView))]
@@ -474,7 +475,7 @@ public readonly struct VectorView
     {
         if (IsEmpty)
             return this;
-        BlasProvider.Scal(1 / scalar, this);
+        BlasProvider.InvScal(scalar, this);
         return this;
     }
 

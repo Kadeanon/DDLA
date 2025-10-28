@@ -227,7 +227,7 @@ public class Cholesky
 
     private static void Sqrt(ref double alpha)
     {
-        if (alpha <= 0)
+        if (double.IsFinite(alpha) && alpha <= 0)
             throw new LinalgException("Cholesky",
                 "Warning: Cholesky factorization " +
                 "encountered A non-positive pivot" +

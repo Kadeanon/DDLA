@@ -8,6 +8,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+using BlasProvider = DDLA.BLAS.Managed.BlasProvider;
+
 namespace DDLA.Core;
 
 /// <summary>
@@ -754,7 +756,7 @@ public class Matrix : IEnumerable<double>
     }
 
     public void ShiftDiag(double alpha)
-        => BlasProvider.ShiftDiag(alpha, View);
+        => BlasProvider.Shift(alpha, View.Diag);
 
     public void SwapCol(int i, int j)
         => BlasProvider.Swap(View.GetColumn(i), View.GetColumn(j));

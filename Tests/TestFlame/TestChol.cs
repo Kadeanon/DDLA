@@ -31,9 +31,12 @@ public class TestChol
             var L =
                 CreateMatrixRandom(m, m).View;
             //L.MakeTr(UpLo.Lower);
+            CheckForNaN(L);
             var orig = L * L.T;
             orig.CopyTo(L);
+            CheckForNaN(L);
             action(L);
+            CheckForNaN(L);
             BlasProvider.MakeTr(L, UpLo.Lower);
             var result = L * L.T;
             var diff = orig - result;
@@ -116,11 +119,11 @@ public class TestChol
             double n1 = diff.Nrm1(),
                 n2 = diff.NrmF(),
                 nf = diff.NrmInf();
-            Assert.IsTrue(n1 < tol, 
+            Assert.IsTrue(n1 < tol,
                 $"Norm1 error {n1} exceeds tolerance {tol}.");
-            Assert.IsTrue(n2 < tol, 
+            Assert.IsTrue(n2 < tol,
                 $"Norm2 error {n2} exceeds tolerance {tol}.");
-            Assert.IsTrue(nf < tol, 
+            Assert.IsTrue(nf < tol,
                 $"NormInf error {nf} exceeds tolerance {tol}.");
             Console.WriteLine($"Test {i + 1}/{count}:" +
                 $"n1 = {n1}, n2 = {n2}, nf = {nf}");
@@ -159,5 +162,15 @@ public class TestChol
     }
     #endregion Cholesky Solver Tests
 
-
+    private static void CheckForNaN(MatrixView A)
+    {
+        for (int j = 0; j < A.Cols; j++)
+        {
+            for (int i = 0; i < A.Rows; i++)
+            {
+                Assert.IsFalse(double.IsNaN(A[i, j]),
+                    $"Matrix contains NaN at ({i}, {j}).");
+            }
+        }
+    }
 }
