@@ -6,7 +6,7 @@ using Givens = (double c, double s);
 
 namespace SimpleExample.SymmEVD.Diag;
 
-public class FrancisQR(VectorView d,
+public class FrancisQRSEVD(VectorView d,
     VectorView e, MatrixView Q,
     double tol = 1e-16, int maxIter = 32)
 {

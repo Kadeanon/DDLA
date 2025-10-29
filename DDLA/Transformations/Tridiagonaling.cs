@@ -1,10 +1,9 @@
-﻿using DDLA.BLAS;
-using DDLA.Core;
+﻿using DDLA.Core;
 using DDLA.Factorizations;
 using DDLA.Misc;
 using DDLA.Misc.Flags;
 using DDLA.Misc.Pools;
-using static DDLA.BLAS.BlasProvider;
+using static DDLA.BLAS.Managed.BlasProvider;
 
 namespace DDLA.Transformations;
 
@@ -59,7 +58,6 @@ public static class Tridiagonaling
             Step(ABR, T1[..block, ..], d1, e1);
             index = indexNext;
         }
-        FormQ(A, T);
     }
 
     /// <summary>
@@ -210,7 +208,7 @@ public static class Tridiagonaling
         }
     }
 
-    private static void BuildHH(VectorView x, out double sigma, out double tau)
+    internal static void BuildHH(VectorView x, out double sigma, out double tau)
     {
         if (x.Length == 0)
             throw new ArgumentException("Vector length must be at least 1.", nameof(x));

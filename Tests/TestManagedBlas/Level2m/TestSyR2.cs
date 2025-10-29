@@ -48,7 +48,6 @@ public class TestSyr2
         CheckExpectedResults(UpLo.Lower, mat);
     }
 
-    [Ignore("Maybe aocl bug")]
     [TestMethod]
     public void TestSimpleLoSyR2()
     {

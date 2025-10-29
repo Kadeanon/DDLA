@@ -24,6 +24,7 @@ public class TwoStageBidiag : BidiagBase
         TU2 = MatrixView.Create(wid, wid);
         TV2 = MatrixView.Create(wid, wid);
     }
+
     public override MatrixView U { get; }
 
     public override MatrixView V { get; }

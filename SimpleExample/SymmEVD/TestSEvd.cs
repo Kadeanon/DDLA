@@ -38,7 +38,7 @@ internal class TestSEvd
 
         start = DateTime.Now;
         var diag = tridiag.Diag;
-        var fran = new FrancisQR(diag,
+        var fran = new FrancisQRSEVD(diag,
             tridiag.SubDiag, Q);
         fran.Kernel();
         var eigenValues = diag;
@@ -80,7 +80,7 @@ internal class TestSEvd
 
         start = DateTime.Now;
         var diag = tridiag.Diag;
-        var fran = new FrancisQR(diag,
+        var fran = new FrancisQRSEVD(diag,
             tridiag.SubDiag, Q);
         fran.Kernel();
         var eigenValues = diag;

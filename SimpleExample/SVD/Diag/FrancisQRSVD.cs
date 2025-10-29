@@ -7,7 +7,7 @@ using static DDLA.BLAS.BlasProvider;
 
 namespace SimpleExample.SVD.Diag;
 
-public class FrancisQR(VectorView d,
+public class FrancisQRSVD(VectorView d,
     VectorView e, MatrixView U, MatrixView V,
     double tol = 1e-16, int maxIter = 400)
 {

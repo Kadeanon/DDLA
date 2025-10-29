@@ -8,7 +8,7 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        int cols = 1025;
+        int cols = 1023;
         int rows = cols;
         //QRBase.TestQRFamily(rows, cols);
         //LLSBase.TestLLSFamily(rows, cols);

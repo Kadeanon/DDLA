@@ -1,4 +1,5 @@
-﻿using MKLNET;
+﻿using DDLA.Transformations;
+using MKLNET;
 using SimpleExample.SVD.Bidiag;
 using SimpleExample.SVD.Diag;
 
@@ -12,7 +13,7 @@ public class TestSvd
         {
             Console.WriteLine($"--- Iteration {i + 1} ---");
             // TestHHUTBidiag(rows, cols);
-            TestTwoStageBidiag(rows, cols);
+            TestHHUTBidiag(rows, cols);
             Console.WriteLine();
         }
     }
@@ -110,12 +111,77 @@ public class TestSvd
         double maxSv, minSv;
 
         start = DateTime.Now;
-        var franc = new FrancisQR(bidiag.Diag, bidiag.SubDiag,
+        var franc = new FrancisQRSVD(bidiag.Diag, bidiag.SubDiag,
             bidiag.U, bidiag.V);
         franc.Kernel();
         span = DateTime.Now - start;
 
         var svdValues = bidiag.Diag;
+
+        E.Diag = svdValues;
+        diff = U * (E * V.T) - mat;
+        Console.WriteLine($"nrmf(UU^T-I)={UVNorm(U)}");
+        Console.WriteLine($"nrmf(VV^T-I)={UVNorm(V)}");
+        Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
+
+        Console.WriteLine($"Diag time out: {span}");
+
+        maxSv = svdValues[0];
+        minSv = svdValues[^1];
+        Console.WriteLine($"Max sv {maxSv}, min sv {minSv}, cond {maxSv / minSv}");
+
+        var toMkl = orig.Clone();
+        var s = Vector.Create(cols);
+        var UMKL = Matrix.Create(rows, rows);
+        var VMKL = Matrix.Create(cols, cols);
+        start = DateTime.Now;
+        MKL.set_threading_layer(MklThreading.TBB);
+        Lapack.gesdd(Layout.RowMajor, 'A',
+            rows, cols, toMkl.Data, toMkl.RowStride,
+            s.Data,
+            UMKL.Data, rows,
+            VMKL.Data, cols);
+        span = DateTime.Now - start;
+
+        E.Diag = s;
+        diff = UMKL * E * VMKL - mat;
+        Console.WriteLine($"nrmf(UU^T-I)={UVNorm(UMKL)}");
+        Console.WriteLine($"nrmf(VV^T-I)={UVNorm(VMKL)}");
+        Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
+        Console.WriteLine($"MKL time out: {span}");
+
+        maxSv = s[0];
+        minSv = s[^1];
+        Console.WriteLine($"Max sv {maxSv}, min sv {minSv}, cond {maxSv / minSv}");
+    }
+
+    static void TestHHUTBidiag2(int rows, int cols)
+    {
+        var mat = Matrix.RandomSPD(rows).Transpose();
+        var orig = mat.Clone();
+
+        DateTime start = DateTime.Now;
+        Bidiagonaling.Bidiag(mat, out var U, out var V, out var d, out var e);
+        Console.WriteLine($"Create svd with {rows}x{cols}");
+        var span = DateTime.Now - start;
+        var B = Bidiagonaling.GetBiMatrix(mat, d, e);
+        var diff = U * (B * V.T) - mat;
+        Console.WriteLine($"nrmf(UU^T-I)={UVNorm(U)}");
+        Console.WriteLine($"nrmf(VV^T-I)={UVNorm(V)}");
+        Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
+
+        Console.WriteLine($"Bidiag time out: {span}");
+
+        var E = mat.EmptyLike().View;
+        double maxSv, minSv;
+
+        start = DateTime.Now;
+        var franc = new FrancisQRSVD(d, e,
+            U, V);
+        franc.Kernel();
+        span = DateTime.Now - start;
+
+        var svdValues = d;
 
         E.Diag = svdValues;
         diff = U * (E * V.T) - mat;
