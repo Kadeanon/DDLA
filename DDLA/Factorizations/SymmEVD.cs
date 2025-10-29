@@ -15,23 +15,43 @@ namespace DDLA.Factorizations;
 /// </summary>
 public class SymmEVD
 {
-    readonly MatrixView matrix; // working matrix (may be clone of input)
+    readonly Matrix matrix; // working matrix (may be clone of input)
     bool computed;
+    bool deconstructed;
 
     // results
-    VectorView d; // eigenvalues (length n)
-    VectorView e; // subdiagonal (length n-1)
-    MatrixView Q; // eigenvectors (n x n)
+    Vector d; // eigenvalues (length n)
+    Vector e; // subdiagonal (length n-1)
+    Matrix Q; // eigenvectors (n x n)
 
     public SymmEVD(MatrixView A, UpLo uplo = UpLo.Lower, bool inplace = false)
     {
-        BlasProvider.CheckSymmMatLength(A, uplo);
         // Only the specified triangular part is referenced.
         BlasProvider.CheckSymmMatLength(A, uplo);
         if (uplo == UpLo.Upper)
             A = A.T;
-        matrix = inplace ? A : A.Clone();
+        matrix = inplace ? new(A) : A.Clone();
         computed = false;
+        Q = matrix;
+        d = Vector.Create(matrix.Rows);
+        e = Vector.Create(matrix.Rows - 1);
+    }
+
+    public SymmEVD(Matrix A, UpLo uplo = UpLo.Lower, bool inplace = false)
+    {
+        BlasProvider.CheckSymmMatLength(A, uplo);
+        if (uplo == UpLo.Upper)
+        {
+            matrix = inplace ? A.Transpose() : A.View.T.Clone();
+        }
+        else
+        {
+            matrix = inplace ? A : A.Clone();
+        }
+        computed = false;
+        Q = matrix;
+        d = Vector.Create(matrix.Rows);
+        e = Vector.Create(matrix.Rows - 1);
     }
 
     public Vector EigenValues
@@ -39,7 +59,7 @@ public class SymmEVD
         get
         {
             ComputeOnce();
-            return new(d);
+            return d;
         }
     }
 
@@ -48,25 +68,30 @@ public class SymmEVD
         get
         {
             ComputeOnce();
-            return new(Q);
+            return Q;
         }
     }
 
     public void Deconstruct(out Vector eigenValues, out Matrix eigenVectors)
     {
         ComputeOnce();
-        eigenValues = new(d);
-        eigenVectors = new(Q);
+        eigenValues = d;
+        eigenVectors = Q;
+
+        deconstructed = true;
     }
 
     public void ComputeOnce()
     {
+        if (deconstructed)
+            throw new InvalidOperationException(
+                "Matrix has been deconstructed, cannot compute again.");
         if (computed) return;
         computed = true;
 
+        var T = Tridiagonaling.CreateT(matrix);
         // Reduce to tridiagonal and form Q in-place into matrix (as per Tridiagonaling).
-        Tridiagonaling.Tridiag(matrix, out var T, out d, out e);
-        Tridiagonaling.FormQ(matrix, T);
+        Tridiagonaling.Tridiag(matrix, T, d, e);
         // After Tridiagonaling.Tridiag, matrix now stores the orthogonal Q in full.
         Q = matrix;
 

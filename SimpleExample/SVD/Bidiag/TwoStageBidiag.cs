@@ -1,4 +1,4 @@
-﻿using DDLA.BLAS;
+﻿using DDLA.BLAS.Managed;
 using DDLA.Misc.Flags;
 using SimpleExample.LAFFExercise.QRs;
 using DDLA.Factorizations;

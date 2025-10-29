@@ -29,9 +29,6 @@ public static class Tridiagonaling
     /// triangular factors of the block Householder transformations</param>
     /// <param name="d">A vector to save the diag elements.</param>
     /// <param name="e">A vector to save the subdiag elements.</param>
-    /// <remarks>After called this method, you can call 
-    /// <see cref="FormQ(MatrixView, MatrixView)"/> to get the
-    /// Q matrix overwritten in full A matrix.</remarks>
     public static void Tridiag(MatrixView A, MatrixView T,
         VectorView d, VectorView e)
     {
@@ -58,6 +55,7 @@ public static class Tridiagonaling
             Step(ABR, T1[..block, ..], d1, e1);
             index = indexNext;
         }
+        FormQ(A, T);
     }
 
     /// <summary>
@@ -72,9 +70,6 @@ public static class Tridiagonaling
     /// triangular factors of the block Householder transformations</param>
     /// <param name="d">A vector to save the diag elements.</param>
     /// <param name="e">A vector to save the subdiag elements.</param>
-    /// <remarks>After called this method, you can call 
-    /// <see cref="FormQ(MatrixView, MatrixView)"/> to get the
-    /// Q matrix overwritten in full A matrix.</remarks>
     public static void Tridiag(MatrixView A, out MatrixView T,
         out VectorView d, out VectorView e)
     {
@@ -130,7 +125,7 @@ public static class Tridiagonaling
     /// resulting orthogonal matrix Q.</param>
     /// <param name="T">The workspace matrix T containing the upper
     /// triangular factors of the block Householder transformations.</param>
-    public static void FormQ(MatrixView A, MatrixView T)
+    internal static void FormQ(MatrixView A, MatrixView T)
     {
         for (int j = A.Rows - 2; j > 0; --j)
         {

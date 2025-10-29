@@ -1,11 +1,89 @@
-﻿using DDLA.Utilities;
+﻿using DDLA.BLAS.Managed;
+using DDLA.Core;
+using DDLA.Transformations;
+using DDLA.Utilities;
 using System.Diagnostics;
 
-using Givens = (double c, double s);
+namespace DDLA.Factorizations;
 
-using static DDLA.BLAS.Managed.BlasProvider;
+public class SVD
+{
+    readonly MatrixView matrix;
+    bool computed;
+    bool deconstructed;
 
-namespace SimpleExample.SVD.Diag;
+    // results
+    readonly Vector d;
+    readonly Vector e;
+    readonly Matrix U;
+    readonly Matrix V;
+
+    public SVD(MatrixView A, bool inplace = false)
+    {
+        var len = A.Rows;
+        var wid = A.Cols;
+        if (len < wid)
+            throw new ArgumentException("Only support m >= n");
+        matrix = inplace ? A : A.Clone();
+        computed = false;
+        U = Matrix.Eyes(len, colMajor: true);
+        V = Matrix.Eyes(wid, colMajor: true);
+        d = Vector.Create(wid);
+        e = Vector.Create(wid - 1);
+    }
+
+    public Vector SingularValues
+    {
+        get
+        {
+            ComputeOnce();
+            return d;
+        }
+    }
+
+    public Matrix LeftSingularVectors
+    {
+        get
+        {
+            ComputeOnce();
+            return U;
+        }
+    }
+
+    public Matrix RightSingularVectors
+    {
+        get
+        {
+            ComputeOnce();
+            return V;
+        }
+    }
+
+    public void Deconstruct(out Matrix leftSingularVectors, 
+        out Vector singularValues, out Matrix rightSingularVectors)
+    {
+        ComputeOnce();
+        singularValues = d;
+        leftSingularVectors = U;
+        rightSingularVectors = V;
+
+        deconstructed = true;
+    }
+
+    public void ComputeOnce()
+    {
+        if (deconstructed)
+            throw new InvalidOperationException(
+                "Matrix has been deconstructed, cannot compute again.");
+        if (computed) return;
+        computed = true;
+
+        Bidiagonaling.Bidiag(matrix, U, V, d, e);
+
+        var fran = new FrancisQRSVD(d, e, U, V);
+        fran.Kernel();
+    }
+}
 
 public class FrancisQRSVD(VectorView d,
     VectorView e, MatrixView U, MatrixView V,
@@ -56,8 +134,8 @@ public class FrancisQRSVD(VectorView d,
             ref var c = ref d[1];
 
             SVD2x2(d, e, tol, out var giv1, out var giv2);
-            Rot(U[.., 0], U[.., 1], giv1);
-            Rot(V[.., 0], V[.., 1], giv2);
+            BlasProvider.Rot(U[.., 0], U[.., 1], giv1);
+            BlasProvider.Rot(V[.., 0], V[.., 1], giv2);
             TotalIter++;
             return;
         }
@@ -67,9 +145,6 @@ public class FrancisQRSVD(VectorView d,
 
         while (start < end)
         {
-            // 跳过已收敛的上下边界
-
-            // 检查上边界
             for (m = end; m > start; m--)
             {
                 var a = d[m - 1];
@@ -82,7 +157,6 @@ public class FrancisQRSVD(VectorView d,
             }
             end = m;
 
-            // 检查下边界
             for (m = start; m < end - 1; m++)
             {
                 var a = d[m];
@@ -95,7 +169,6 @@ public class FrancisQRSVD(VectorView d,
             }
             start = m;
 
-            // 尝试寻找分割点
             m = start + 1;
             for (; m < end - 1; m++)
             {
@@ -107,13 +180,8 @@ public class FrancisQRSVD(VectorView d,
                     break;
                 }
             }
-            // 如果找到了分割点，分裂矩阵
             if (m < end - 1)
             {
-                // 矩阵分割，处理子问题
-                // 左边：start..m 右边：m..end
-                // 递归调用
-
                 // var dStart = d.Offset;
                 //Console.WriteLine(
                 //    $"[DEBUG]Split: {dStart + start}..{dStart + m} " +
@@ -156,8 +224,8 @@ public class FrancisQRSVD(VectorView d,
                     var VWork = V[.., start..(end + 1)];
                     SVD2x2(dWork, eWork, tol,
                         out var giv1, out var giv2);
-                    Rot(UWork[.., 0], UWork[.., 1], giv1);
-                    Rot(VWork[.., 0], VWork[.., 1], giv2);
+                    BlasProvider.Rot(UWork[.., 0], UWork[.., 1], giv1);
+                    BlasProvider.Rot(VWork[.., 0], VWork[.., 1], giv2);
                     TotalIter++;
                     break;
                 }
@@ -169,7 +237,7 @@ public class FrancisQRSVD(VectorView d,
                     var VWork = V[.., start..(end + 1)];
                     var uRotsWork = uRots[start..end];
                     var vRotsWork = vRots[start..end];
-                    BulgeStep(dWork, eWork, 
+                    BulgeStep(dWork, eWork,
                         //UWork, VWork, 
                         uRotsWork, vRotsWork);
 
@@ -178,12 +246,12 @@ public class FrancisQRSVD(VectorView d,
                     {
                         var giv1 = uRotsWork[i];
                         var giv2 = uRotsWork[i + 1];
-                        Rot2(UWork[.., i], UWork[.., i + 1], UWork[.., i + 2], giv1, giv2);
+                        BlasProvider.Rot2(UWork[.., i], UWork[.., i + 1], UWork[.., i + 2], giv1, giv2);
                     }
-                    if(i < eWork.Length)
+                    if (i < eWork.Length)
                     {
                         var giv = uRotsWork[i];
-                        Rot(UWork[.., i], UWork[.., i + 1], giv);
+                        BlasProvider.Rot(UWork[.., i], UWork[.., i + 1], giv);
                     }
 
                     i = 0;
@@ -191,12 +259,12 @@ public class FrancisQRSVD(VectorView d,
                     {
                         var giv1 = vRotsWork[i];
                         var giv2 = vRotsWork[i + 1];
-                        Rot2(VWork[.., i], VWork[.., i + 1], VWork[.., i + 2], giv1, giv2);
+                        BlasProvider.Rot2(VWork[.., i], VWork[.., i + 1], VWork[.., i + 2], giv1, giv2);
                     }
                     if (i < eWork.Length)
                     {
                         var giv = vRotsWork[i];
-                        Rot(VWork[.., i], VWork[.., i + 1], giv);
+                        BlasProvider.Rot(VWork[.., i], VWork[.., i + 1], giv);
                     }
 
                     TotalIter += dWork.Length;
@@ -222,7 +290,7 @@ public class FrancisQRSVD(VectorView d,
             if (d[i] < 0)
             {
                 d[i] = -d[i];
-                Scal(-1, V[.., i]);
+                BlasProvider.Scal(-1, V[.., i]);
             }
         }
     }
@@ -468,7 +536,7 @@ public class FrancisQRSVD(VectorView d,
     public static double CopySign(double x, double y) =>
         y >= 0 ? x : -x;
 
-    static void BulgeStep(VectorView d, VectorView e, 
+    static void BulgeStep(VectorView d, VectorView e,
         //MatrixView U, MatrixView V, 
         Span<Givens> uRots, Span<Givens> vRots)
     {
@@ -554,96 +622,6 @@ public class FrancisQRSVD(VectorView d,
         uRots[k] = giv;
     }
 
-    static Givens CreateBulge(VectorView d, VectorView e, double miu, out double bulge)
-    {
-        var d0 = d[0];
-        var e0 = e[0];
-        var d1 = d[1];
-
-        var giv = ComputeGivens(d0 - miu, e0);
-
-        d[0] = d0 * giv.c + e0 * giv.s;
-        e[0] = e0 * giv.c - d0 * giv.s;
-        d[1] = d1 * giv.c;
-        bulge = d1 * giv.s;
-
-        return giv;
-    }
-
-    static Givens ChaseBulgeLeft(VectorView d, VectorView e, ref double bulge)
-    {
-        var d0 = d[0];
-        var e0 = e[0];
-        var d1 = d[1];
-        var e1 = e[1];
-
-        var giv = ComputeGivens(d0, bulge);
-
-        Debug.Assert(Math.Abs(giv.c * bulge - giv.s * d0) < 1e-10);
-        d[0] = giv.c * d0 + giv.s * bulge;
-        e[0] = giv.c * e0 + giv.s * d1;
-        d[1] = -giv.s * e0 + giv.c * d1;
-        e[1] = giv.c * e1;
-        bulge = giv.s * e1;
-
-        return giv;
-    }
-
-    static Givens ChaseBulgeRight(VectorView d, VectorView e, ref double bulge)
-    {
-        // | e0 bl | |  c s | 
-        // | d1 e1 | | -s c |
-        // |  0 d2 |
-        var e0 = e[0];
-        var d1 = d[1];
-        var e1 = e[1];
-        var d2 = d[2];
-
-        var giv = ComputeGivens(e0, bulge);
-
-        // | e0 bl | |  c s | = | e0 * c - bl * s   e0 * s + bl * c |
-        // | d1 e1 | | -s c |   | d1 * c - e1 * s   d1 * s + e1 * c |
-        // |  0 d2 |            |  0 * c - d2 * s    0 * s + d2 * c |
-        Debug.Assert(Math.Abs(-e0 * giv.s + bulge * giv.c) < 1e-10);
-        e[0] = e0 * giv.c + bulge * giv.s;
-        d[1] = d1 * giv.c + e1 * giv.s;
-        e[1] = -d1 * giv.s + e1 * giv.c;
-        d[2] = d2 * giv.c;
-        bulge = d2 * giv.s;
-
-        return giv;
-    }
-
-    static Givens DestroyBulge(VectorView d, VectorView e, in double bulge)
-    {
-        var d0 = d[0];
-        var e0 = e[0];
-        var d1 = d[1];
-
-        // | c -s | | d0 e0 |
-        // | s  c | | bl d1 |
-        var giv = ComputeGivens(d0, bulge);
-
-        // | c -s | | d0 e0 | = | c * d0 - s * bl  c * e0 - s * d1 |
-        // | s  c | | bl d1 |   | s * d0 + c * bl  s * e0 + c * d1 |
-        Debug.Assert(Math.Abs(-d0 * giv.s + bulge * giv.c) < 1e-10);
-        d[0] = giv.c * d0 + giv.s * bulge;
-        e[0] = giv.c * e0 + giv.s * d1;
-        d[1] = -giv.s * e0 + giv.c * d1;
-
-        return giv;
-    }
-
-    private static void ApplyUV
-        (VectorView left, VectorView right,
-        Givens giv)
-        => Rot(left, right, giv);
-
-    private static void ApplyUV
-        (VectorView left, VectorView right,
-        double c, double s)
-        => Rot(left, right, new(c, s));
-
     public static Givens ComputeGivens(double a, double b)
     {
         double tau, c, s;
@@ -709,3 +687,4 @@ public class FrancisQRSVD(VectorView d,
         return c;
     }
 }
+

@@ -20,8 +20,7 @@ public class TestSvd
 
     static void TestHHUnbBidiag(int rows, int cols)
     {
-        rows = cols = 1027;
-        var mat = Matrix.RandomSPD(rows).Transpose();
+        var mat = Matrix.RandomDense(rows, cols);
         var orig = mat.Clone();
 
         DateTime start = DateTime.Now;
@@ -89,7 +88,7 @@ public class TestSvd
 
     static void TestHHUTBidiag(int rows, int cols)
     {
-        var mat = Matrix.RandomSPD(rows).Transpose();
+        var mat = Matrix.RandomDense(rows, cols);
         var orig = mat.Clone();
 
         DateTime start = DateTime.Now;
@@ -157,22 +156,22 @@ public class TestSvd
 
     static void TestHHUTBidiag2(int rows, int cols)
     {
-        var mat = Matrix.RandomSPD(rows).Transpose();
-        var orig = mat.Clone();
+        var A = Matrix.RandomDense(rows, cols);
+        var orig = A.Clone();
 
         DateTime start = DateTime.Now;
-        Bidiagonaling.Bidiag(mat, out var U, out var V, out var d, out var e);
+        Bidiagonaling.Bidiag(A, out var U, out var V, out var d, out var e);
         Console.WriteLine($"Create svd with {rows}x{cols}");
         var span = DateTime.Now - start;
-        var B = Bidiagonaling.GetBiMatrix(mat, d, e);
-        var diff = U * (B * V.T) - mat;
+        var B = Bidiagonaling.GetBiMatrix(A, d, e);
+        var diff = U * (B * V.T) - orig;
         Console.WriteLine($"nrmf(UU^T-I)={UVNorm(U)}");
         Console.WriteLine($"nrmf(VV^T-I)={UVNorm(V)}");
         Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
 
         Console.WriteLine($"Bidiag time out: {span}");
 
-        var E = mat.EmptyLike().View;
+        var E = A.EmptyLike().View;
         double maxSv, minSv;
 
         start = DateTime.Now;
@@ -184,7 +183,7 @@ public class TestSvd
         var svdValues = d;
 
         E.Diag = svdValues;
-        diff = U * (E * V.T) - mat;
+        diff = U * (E * V.T) - orig;
         Console.WriteLine($"nrmf(UU^T-I)={UVNorm(U)}");
         Console.WriteLine($"nrmf(VV^T-I)={UVNorm(V)}");
         Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
@@ -209,7 +208,7 @@ public class TestSvd
         span = DateTime.Now - start;
 
         E.Diag = s;
-        diff = UMKL * E * VMKL - mat;
+        diff = UMKL * E * VMKL - orig;
         Console.WriteLine($"nrmf(UU^T-I)={UVNorm(UMKL)}");
         Console.WriteLine($"nrmf(VV^T-I)={UVNorm(VMKL)}");
         Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
@@ -223,7 +222,6 @@ public class TestSvd
     static void TestTwoStageBidiag(int rows, int cols)
     {
         var mat = Matrix.RandomDense(rows, cols);
-        var orig = mat.Clone();
 
         DateTime start = DateTime.Now;
         BidiagBase bidiag = new TwoStageBidiag(mat);
@@ -239,8 +237,6 @@ public class TestSvd
         Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
 
         Console.WriteLine($"Bidiag time out: {span}");
-
-
     }
 
     static double UVNorm(MatrixView UorV)

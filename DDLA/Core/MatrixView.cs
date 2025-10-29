@@ -584,11 +584,12 @@ public readonly struct MatrixView : IEnumerable<double>
         BlasProvider.Copy(this, other);
     }
 
-    public readonly Matrix Clone()
+    public readonly Matrix Clone(bool colMajor = false)
     {
-        var target = Matrix.Create(Rows, Cols, true);
+        var target = colMajor ? Create(Cols, Rows, true).T :
+            Create(Rows, Cols, true);
         BlasProvider.Copy(this, target);
-        return target;
+        return new(target);
     }
 
     public readonly void MakeTr(UpLo uplo)

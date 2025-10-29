@@ -75,7 +75,7 @@ public class HHUTBidiag : BidiagBase
                 a10.CopyTo(t01);
                 a21.LeftMul(A20, 1.0, t01);
 
-                if (iStart < Work.Cols - 1)
+                if (iStart < Work.Cols - 1 && i < block - 1 || iEnd < Work.Cols)
                 {
                     tau = ref TVT1[i, i];
                     t01 = TVT1[..i, i];
@@ -108,7 +108,7 @@ public class HHUTBidiag : BidiagBase
 
         var A = Work;
         var T = TU;
-        var W = Tmp[..TUBlockSize, ..];
+        var W = Tmp[..TUBlockSize, ..wid];
         var Q = U;
         //Crash here
         HHUTQR.ApplyQ(A, T, W, Q);

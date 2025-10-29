@@ -145,7 +145,7 @@ public class HHUTQR(Matrix A) : QRBase(A)
 
         // B -= A * Y
         // B2 -= A21 * Y
-        DDLA.BLAS.BlasProvider.GeMM(-1, A21, W, 1, B2);
+        GeMM(-1, A21, W, 1, B2);
         //A21.Multify(-1, W, 1, B2);
 
         // B1 -= A11 * Y 
