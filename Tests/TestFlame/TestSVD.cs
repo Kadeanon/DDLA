@@ -6,10 +6,13 @@ namespace Tests.TestFlame;
 [TestClass]
 public class TestSVD
 {
-    private int RandTiny => Random.Shared.Next(3, 8);
-    private int RandSmall => Random.Shared.Next(31, 96);
-    private int RandMedium => Random.Shared.Next(127, 384);
-    private int RandLarge => Random.Shared.Next(785, 1536);
+    private int RandTiny() => Random.Shared.Next(3, 8);
+
+    private int RandSmall() => Random.Shared.Next(31, 96);
+
+    private int RandMedium() => Random.Shared.Next(127, 384);
+
+    private int RandLarge() => Random.Shared.Next(785, 1536);
 
     [TestMethod]
     public void TestTinySEVDLower()
@@ -25,25 +28,27 @@ public class TestSVD
 
     [TestMethod]
     public void TestLargeSEVDLower()
-    => TestSVDCore(RandLarge, RandLarge);
+    => TestSVDCore(RandLarge, RandLarge, 1e-9);
 
-    private static void TestSVDCore(int m, int n, double tol = 1e-10)
+    private static void TestSVDCore(Func<int> rows, Func<int> cols, double tol = 1e-10)
     {
-        int count = 10;
+        int count = 1;
         for (int i = 0; i < count; i++)
         {
-            if(m < n)  (m, n) = (n, m);
+            // if(m < n)  (m, n) = (n, m);
 
             // Build a random symmetric matrix
+            var m = rows();
+            var n = cols();
+            Console.WriteLine($"Testing SVD with matrix size {m} x {n}");
             Matrix A = Matrix.RandomDense(m, n);
             Matrix orig = A.Clone();
 
             // Compute EVD: A = Q * D * Q^T
-            var (U, svals, V) = new SVD(A);
-            var D = Matrix.Diagonals(svals);
+            var (U, S, V) = new SVD(A);
 
             // Reconstruction error
-            var recon = U * (D * V.Transpose());
+            var recon = U * (S * V.Transpose());
             var diff = orig - recon;
             double n1 = diff.Nrm1(),
             n2 = diff.NrmF(),

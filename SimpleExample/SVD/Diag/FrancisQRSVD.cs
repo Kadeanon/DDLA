@@ -180,18 +180,28 @@ public class FrancisQRSVD(VectorView d,
                         var giv2 = uRotsWork[i + 1];
                         Rot2(UWork[.., i], UWork[.., i + 1], UWork[.., i + 2], giv1, giv2);
                     }
-                    if(i < eWork.Length)
+                    for (; i < eWork.Length - 0; i += 1)
+                    {
+                        var giv1 = uRotsWork[i];
+                        Rot(UWork[.., i], UWork[.., i + 1], giv1);
+                    }
+                    if (i < eWork.Length)
                     {
                         var giv = uRotsWork[i];
                         Rot(UWork[.., i], UWork[.., i + 1], giv);
                     }
 
                     i = 0;
-                    for (; i < eWork.Length - 1; i += 2)
+                    for (; i < 0 * eWork.Length; i += 2)
                     {
                         var giv1 = vRotsWork[i];
                         var giv2 = vRotsWork[i + 1];
                         Rot2(VWork[.., i], VWork[.., i + 1], VWork[.., i + 2], giv1, giv2);
+                    }
+                    for (; i < eWork.Length; i++)
+                    {
+                        var giv = vRotsWork[i];
+                        Rot(VWork[.., i], VWork[.., i + 1], giv);
                     }
                     if (i < eWork.Length)
                     {

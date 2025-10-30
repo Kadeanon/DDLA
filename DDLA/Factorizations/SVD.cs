@@ -4,6 +4,8 @@ using DDLA.Transformations;
 using DDLA.Utilities;
 using System.Diagnostics;
 
+using static DDLA.BLAS.Managed.BlasProvider;
+
 namespace DDLA.Factorizations;
 
 public class SVD
@@ -22,14 +24,14 @@ public class SVD
     {
         var len = A.Rows;
         var wid = A.Cols;
-        if (len < wid)
-            throw new ArgumentException("Only support m >= n");
+        // Support both tall (m >= n) and wide (m < n) by allocating with min dimension
         matrix = inplace ? A : A.Clone();
         computed = false;
         U = Matrix.Eyes(len, colMajor: true);
         V = Matrix.Eyes(wid, colMajor: true);
-        d = Vector.Create(wid);
-        e = Vector.Create(wid - 1);
+        int k = Math.Min(len, wid);
+        d = Vector.Create(k);
+        e = Vector.Create(Math.Max(0, k - 1));
     }
 
     public Vector SingularValues
@@ -59,11 +61,12 @@ public class SVD
         }
     }
 
-    public void Deconstruct(out Matrix leftSingularVectors, 
-        out Vector singularValues, out Matrix rightSingularVectors)
+    public void Deconstruct(out Matrix leftSingularVectors,
+        out Matrix singularValues, out Matrix rightSingularVectors)
     {
         ComputeOnce();
-        singularValues = d;
+        singularValues = Matrix.Create(U.Cols, V.Rows);
+        singularValues.Diag.CopyFrom(d);
         leftSingularVectors = U;
         rightSingularVectors = V;
 
@@ -78,10 +81,23 @@ public class SVD
         if (computed) return;
         computed = true;
 
-        Bidiagonaling.Bidiag(matrix, U, V, d, e);
+        bool wide = matrix.Rows < matrix.Cols;
 
-        var fran = new FrancisQRSVD(d, e, U, V);
-        fran.Kernel();
+        if (!wide)
+        {
+            // Tall or square: A = U * B * V^T
+            Bidiagonaling.Bidiag(matrix, U, V, d, e);
+            var fran = new FrancisQRSVD(d, e, U, V);
+            fran.Kernel();
+        }
+        else
+        {
+            // Wide: compute on A^T -> A^T = U_t * B * V_t^T
+            // Map back: A = V_t * B^T * U_t^T, so original U <- V_t, V <- U_t
+            Bidiagonaling.Bidiag(matrix.T, V, U, d, e);
+            var fran = new FrancisQRSVD(d, e, V, U);
+            fran.Kernel();
+        }
     }
 }
 
@@ -134,8 +150,8 @@ public class FrancisQRSVD(VectorView d,
             ref var c = ref d[1];
 
             SVD2x2(d, e, tol, out var giv1, out var giv2);
-            BlasProvider.Rot(U[.., 0], U[.., 1], giv1);
-            BlasProvider.Rot(V[.., 0], V[.., 1], giv2);
+            Rot(U[.., 0], U[.., 1], giv1);
+            Rot(V[.., 0], V[.., 1], giv2);
             TotalIter++;
             return;
         }
@@ -145,6 +161,9 @@ public class FrancisQRSVD(VectorView d,
 
         while (start < end)
         {
+            // 跳过已收敛的上下边界
+
+            // 检查上边界
             for (m = end; m > start; m--)
             {
                 var a = d[m - 1];
@@ -157,6 +176,7 @@ public class FrancisQRSVD(VectorView d,
             }
             end = m;
 
+            // 检查下边界
             for (m = start; m < end - 1; m++)
             {
                 var a = d[m];
@@ -169,6 +189,7 @@ public class FrancisQRSVD(VectorView d,
             }
             start = m;
 
+            // 尝试寻找分割点
             m = start + 1;
             for (; m < end - 1; m++)
             {
@@ -180,12 +201,17 @@ public class FrancisQRSVD(VectorView d,
                     break;
                 }
             }
+            // 如果找到了分割点，分裂矩阵
             if (m < end - 1)
             {
+                // 矩阵分割，处理子问题
+                // 左边：start..m右边：m..end
+                //递归调用
+
                 // var dStart = d.Offset;
                 //Console.WriteLine(
-                //    $"[DEBUG]Split: {dStart + start}..{dStart + m} " +
-                //    $"and {dStart + m}..{dStart + end + 1}");
+                // $"[DEBUG]Split: {dStart + start}..{dStart + m} " +
+                // $"and {dStart + m}..{dStart + end +1}");
 
                 var d0 = d[start..(m + 1)];
                 var e0 = e[start..m];
@@ -204,7 +230,7 @@ public class FrancisQRSVD(VectorView d,
                 ImplicitQrTridiag(d0, e0, U0, V0, uRots0, vRots0);
                 ImplicitQrTridiag(d1, e1, U1, V1, uRots1, vRots1);
 
-                // 由于调用结束后左右两部分均已收敛，
+                //由于调用结束后左右两部分均已收敛，
                 // 因此当前对角化结束，直接返回
                 break;
             }
@@ -224,8 +250,8 @@ public class FrancisQRSVD(VectorView d,
                     var VWork = V[.., start..(end + 1)];
                     SVD2x2(dWork, eWork, tol,
                         out var giv1, out var giv2);
-                    BlasProvider.Rot(UWork[.., 0], UWork[.., 1], giv1);
-                    BlasProvider.Rot(VWork[.., 0], VWork[.., 1], giv2);
+                    Rot(UWork[.., 0], UWork[.., 1], giv1);
+                    Rot(VWork[.., 0], VWork[.., 1], giv2);
                     TotalIter++;
                     break;
                 }
@@ -246,25 +272,35 @@ public class FrancisQRSVD(VectorView d,
                     {
                         var giv1 = uRotsWork[i];
                         var giv2 = uRotsWork[i + 1];
-                        BlasProvider.Rot2(UWork[.., i], UWork[.., i + 1], UWork[.., i + 2], giv1, giv2);
+                        Rot2(UWork[.., i], UWork[.., i + 1], UWork[.., i + 2], giv1, giv2);
+                    }
+                    for (; i < eWork.Length - 0; i += 1)
+                    {
+                        var giv1 = uRotsWork[i];
+                        Rot(UWork[.., i], UWork[.., i + 1], giv1);
                     }
                     if (i < eWork.Length)
                     {
                         var giv = uRotsWork[i];
-                        BlasProvider.Rot(UWork[.., i], UWork[.., i + 1], giv);
+                        Rot(UWork[.., i], UWork[.., i + 1], giv);
                     }
 
                     i = 0;
-                    for (; i < eWork.Length - 1; i += 2)
+                    for (; i < 0 * eWork.Length; i += 2)
                     {
                         var giv1 = vRotsWork[i];
                         var giv2 = vRotsWork[i + 1];
-                        BlasProvider.Rot2(VWork[.., i], VWork[.., i + 1], VWork[.., i + 2], giv1, giv2);
+                        Rot2(VWork[.., i], VWork[.., i + 1], VWork[.., i + 2], giv1, giv2);
+                    }
+                    for (; i < eWork.Length; i++)
+                    {
+                        var giv = vRotsWork[i];
+                        Rot(VWork[.., i], VWork[.., i + 1], giv);
                     }
                     if (i < eWork.Length)
                     {
                         var giv = vRotsWork[i];
-                        BlasProvider.Rot(VWork[.., i], VWork[.., i + 1], giv);
+                        Rot(VWork[.., i], VWork[.., i + 1], giv);
                     }
 
                     TotalIter += dWork.Length;
@@ -290,7 +326,7 @@ public class FrancisQRSVD(VectorView d,
             if (d[i] < 0)
             {
                 d[i] = -d[i];
-                BlasProvider.Scal(-1, V[.., i]);
+                Scal(-1, V[.., i]);
             }
         }
     }
@@ -392,9 +428,9 @@ public class FrancisQRSVD(VectorView d,
         ha = Math.Abs(h);
 
         // pmax points to the maximum absolute element of matrix.
-        //   pmax = 1 if f largest in absolute values.
-        //   pmax = 2 if g largest in absolute values.
-        //   pmax = 3 if h largest in absolute values.
+        // pmax =1 if f largest in absolute values.
+        // pmax =2 if g largest in absolute values.
+        // pmax =3 if h largest in absolute values.
 
         pmax = 1;
 
@@ -415,7 +451,7 @@ public class FrancisQRSVD(VectorView d,
         gt = g;
         ga = Math.Abs(g);
 
-        if (ga == zero)
+        if (ga == 0.0)
         {
             // Diagonal matrix case.
 
@@ -519,7 +555,7 @@ public class FrancisQRSVD(VectorView d,
             tsign = CopySign(one, csr) * CopySign(one, csl) * CopySign(one, f);
         else if (pmax == 2)
             tsign = CopySign(one, snr) * CopySign(one, csl) * CopySign(one, g);
-        else // if ( pmax == 3 )
+        else // if ( pmax ==3 )
             tsign = CopySign(one, snr) * CopySign(one, snl) * CopySign(one, h);
 
         ssmax = CopySign(ssmax, tsign);
@@ -536,7 +572,7 @@ public class FrancisQRSVD(VectorView d,
     public static double CopySign(double x, double y) =>
         y >= 0 ? x : -x;
 
-    static void BulgeStep(VectorView d, VectorView e,
+    static Givens BulgeStep(VectorView d, VectorView e,
         //MatrixView U, MatrixView V, 
         Span<Givens> uRots, Span<Givens> vRots)
     {
@@ -544,7 +580,7 @@ public class FrancisQRSVD(VectorView d,
         Debug.Assert(d.Data != e.Data);
         int k = 0;
         //Console.WriteLine(
-        //    $"[DEBUG]BulgeStep on {d.Offset}..{d.Offset + d.Length}");
+        // $"[DEBUG]BulgeStep on {d.Offset}..{d.Offset + d.Length}");
 
         double miu = WilkinsonShift(e[^2], d[^2], e[^1], d[^1]);
         // 如果 shift 有问题才 fallback
@@ -609,18 +645,109 @@ public class FrancisQRSVD(VectorView d,
         }
 
         // DestroyBulge(d, e, in bulge);
-        d0 = d[0];
-        e0 = e[0];
-        d1 = d[1];
+        var d0f = d[0];
+        var e0f = e[0];
+        var d1f = d[1];
 
-        giv = ComputeGivens(d0, bulge);
+        giv = ComputeGivens(d0f, bulge);
+
+        Debug.Assert(Math.Abs(giv.c * bulge - giv.s * d0f) < 1e-10);
+        d[0] = giv.c * d0f + giv.s * bulge;
+        e[0] = giv.c * e0f + giv.s * d1f;
+        d[1] = giv.c * d1f - giv.s * e0f;
+        uRots[k] = giv;
+        return giv;
+    }
+
+    static Givens CreateBulge(VectorView d, VectorView e, double miu, out double bulge)
+    {
+        var d0 = d[0];
+        var e0 = e[0];
+        var d1 = d[1];
+
+        var giv = ComputeGivens(d0 - miu, e0);
+
+        d[0] = d0 * giv.c + e0 * giv.s;
+        e[0] = e0 * giv.c - d0 * giv.s;
+        d[1] = d1 * giv.c;
+        bulge = d1 * giv.s;
+
+        return giv;
+    }
+
+    static Givens ChaseBulgeLeft(VectorView d, VectorView e, ref double bulge)
+    {
+        var d0 = d[0];
+        var e0 = e[0];
+        var d1 = d[1];
+        var e1 = e[1];
+
+        var giv = ComputeGivens(d0, bulge);
 
         Debug.Assert(Math.Abs(giv.c * bulge - giv.s * d0) < 1e-10);
         d[0] = giv.c * d0 + giv.s * bulge;
         e[0] = giv.c * e0 + giv.s * d1;
-        d[1] = giv.c * d1 - giv.s * e0;
-        uRots[k] = giv;
+        d[1] = -giv.s * e0 + giv.c * d1;
+        e[1] = giv.c * e1;
+        bulge = giv.s * e1;
+
+        return giv;
     }
+
+    static Givens ChaseBulgeRight(VectorView d, VectorView e, ref double bulge)
+    {
+        // | e0 bl | | c s | 
+        // | d1 e1 | | -s c |
+        // |0 d2 |
+        var e0 = e[0];
+        var d1 = d[1];
+        var e1 = e[1];
+        var d2 = d[2];
+
+        var giv = ComputeGivens(e0, bulge);
+
+        // | e0 bl | | c s | = | e0 * c - bl * s e0 * s + bl * c |
+        // | d1 e1 | | -s c | | d1 * c - e1 * s d1 * s + e1 * c |
+        // |0 d2 | |0 * c - d2 * s0 * s + d2 * c |
+        Debug.Assert(Math.Abs(-e0 * giv.s + bulge * giv.c) < 1e-10);
+        e[0] = e0 * giv.c + bulge * giv.s;
+        d[1] = d1 * giv.c + e1 * giv.s;
+        e[1] = -d1 * giv.s + e1 * giv.c;
+        d[2] = d2 * giv.c;
+        bulge = d2 * giv.s;
+
+        return giv;
+    }
+
+    static Givens DestroyBulge(VectorView d, VectorView e, in double bulge)
+    {
+        var d0 = d[0];
+        var e0 = e[0];
+        var d1 = d[1];
+
+        // | c -s | | d0 e0 |
+        // | s c | | bl d1 |
+        var giv = ComputeGivens(d0, bulge);
+
+        // | c -s | | d0 e0 | = | c * d0 - s * bl c * e0 - s * d1 |
+        // | s  c | | bl d1 | | s * d0 + c * bl s * e0 + c * d1 |
+        Debug.Assert(Math.Abs(-d0 * giv.s + bulge * giv.c) < 1e-10);
+        d[0] = giv.c * d0 + giv.s * bulge;
+        e[0] = giv.c * e0 + giv.s * d1;
+        d[1] = -giv.s * e0 + giv.c * d1;
+
+        return giv;
+    }
+
+    private static void ApplyUV
+        (VectorView left, VectorView right,
+        Givens giv)
+        => Rot(left, right, giv);
+
+    private static void ApplyUV
+        (VectorView left, VectorView right,
+        double c, double s)
+        => Rot(left, right, new(c, s));
 
     public static Givens ComputeGivens(double a, double b)
     {

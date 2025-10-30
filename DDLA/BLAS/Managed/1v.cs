@@ -427,22 +427,34 @@ public static partial class BlasProvider
         Math.Sqrt(Sum<SquareOperator<scalar>>(x) / x.Length);
 
     /// <summary>
+    /// index = IndexOfMax(Abs(x)).
+    /// </summary>
+    /// <remarks><see cref="double.NaN"/> is seen as
+    /// smaller than any other value.</remarks>
+    public static int AMax(in vector x)
+    {
+        int length = x.Length;
+        if (length == 0) return 0;
+        Source.Amax(length, ref x.GetHeadRef(), x.Stride, out var indexDim);
+        return (int)indexDim;
+    }
+
+    /// <summary>
     /// (x, y) = (c * x + s * y, - s * x + c * y)
     /// </summary>
     public static void Rot(in vector x, in vector y, Givens giv)
     {
-        int length = x.Length;
+        int length = CheckLength(x, y);
         if (length == 0) return;
-        var (c, s) = giv;
-        if (c == 1 && s == 0) return;
+        if (giv.c == 1 && giv.s == 0) return;
 
-        RotInner(in x, in y, c, s);
+        RotInner(in x, in y, giv.c, giv.s);
     }
 
-    [Optimize]
-    private static void RotInner(in vector x, in vector y, double c, double s)
+    //[Optimize]
+    internal unsafe static void RotInner(in vector x, in vector y, double c, double s)
     {
-        int length = x.Length;
+        int length = CheckLength(x, y);
 
         ref var xRef = ref x.GetHeadRef();
         ref var yRef = ref y.GetHeadRef();
@@ -451,12 +463,19 @@ public static partial class BlasProvider
         if (length > SIMDVec.Count * 4 &&
             x.Stride == 1 && y.Stride == 1)
         {
-            MultiplyAddOperator<scalar> fma = new();
+            for (var len = 0; len < 32; len += 4)
+            {
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * len)));
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * len)));
+            }
             var cVec = SIMDExt.Create(c);
             var sVec = SIMDExt.Create(s);
             var minuscVec = SIMDExt.Create(-s);
+            var fma = new MultiplyAddOperator<double>();
             for (; i <= length - SIMDVec.Count; i += SIMDVec.Count)
             {
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * 32)));
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * 32)));
                 var xVec = SIMDExt.LoadUnsafe(ref xRef);
                 var yVec = SIMDExt.LoadUnsafe(ref yRef);
                 var tmp1 = sVec * yVec;
@@ -471,8 +490,8 @@ public static partial class BlasProvider
         }
         for (; i <= length - 4; i += 4)
         {
-            scalar xVal = xRef;
-            scalar yVal = yRef;
+            double xVal = xRef;
+            double yVal = yRef;
             xRef = c * xVal + s * yVal;
             yRef = c * yVal - s * xVal;
             xRef = ref Unsafe.Add(ref xRef, x.Stride);
@@ -498,26 +517,13 @@ public static partial class BlasProvider
         }
         for (; i < length; i++)
         {
-            scalar xVal = xRef;
-            scalar yVal = yRef;
+            double xVal = xRef;
+            double yVal = yRef;
             xRef = c * xVal + s * yVal;
             yRef = c * yVal - s * xVal;
             xRef = ref Unsafe.Add(ref xRef, x.Stride);
             yRef = ref Unsafe.Add(ref yRef, y.Stride);
         }
-    }
-    
-    /// <summary>
-    /// index = IndexOfMax(Abs(x)).
-    /// </summary>
-    /// <remarks><see cref="double.NaN"/> is seen as
-    /// smaller than any other value.</remarks>
-    public static int AMax(in vector x)
-    {
-        int length = x.Length;
-        if (length == 0) return 0;
-        Source.Amax(length, ref x.GetHeadRef(), x.Stride, out var indexDim);
-        return (int)indexDim;
     }
 
     /// <summary>
@@ -542,8 +548,8 @@ public static partial class BlasProvider
         }
     }
 
-    [Optimize]
-    private static void Rot2Inner(in vector x, in vector y, in vector z, scalar c1, scalar s1,
+    //[Optimize]
+    internal unsafe static void Rot2Inner(in vector x, in vector y, in vector z, scalar c1, scalar s1,
         scalar c2, scalar s2)
     {
         int length = CheckLength(x, y);
@@ -556,6 +562,12 @@ public static partial class BlasProvider
         if (length > SIMDVec.Count * 4 &&
             x.Stride == 1 && y.Stride == 1 && z.Stride == 1)
         {
+            for (var len = 0; len < 32; len += 4)
+            {
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * len)));
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * len)));
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref zRef, SIMDVec.Count * len)));
+            }
             var c1Vec = SIMDExt.Create(c1);
             var s1Vec = SIMDExt.Create(s1);
             var minuss1Vec = SIMDExt.Create(-s1);
@@ -565,6 +577,9 @@ public static partial class BlasProvider
             var fma = new MultiplyAddOperator<double>();
             for (; i <= length - SIMDVec.Count; i += SIMDVec.Count)
             {
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * 32)));
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * 32)));
+                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref zRef, SIMDVec.Count * 32)));
                 var xVec = SIMDExt.LoadUnsafe(ref xRef);
                 var yVec = SIMDExt.LoadUnsafe(ref yRef);
                 var tmp1 = s1Vec * yVec;

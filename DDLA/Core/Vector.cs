@@ -262,7 +262,7 @@ public class Vector
 
     public void CopyFrom(VectorView other)
     {
-        BlasProvider.Copy(this, other);
+        BlasProvider.Copy(other, this);
     }
 
     public void CopyFrom(ReadOnlySpan<double> source)
