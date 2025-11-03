@@ -128,7 +128,7 @@ public class FrancisQRSVD(VectorView d,
         ImplicitQrTridiag(d, e, U, V, uRots, vRots);
         MakeSingularValuesNonNegative();
         SortResults();
-        Console.WriteLine($"Average calculate a singular value use {TotalIter / d.Length} transfers.");
+        //Console.WriteLine($"Average calculate a singular value use {TotalIter / d.Length} transfers.");
     }
 
     public void ImplicitQrTridiag(VectorView d,
@@ -587,7 +587,7 @@ public class FrancisQRSVD(VectorView d,
         if (double.IsNaN(miu) || miu < 0)
 
         {
-            Console.WriteLine($"Warning: Invalid shift {miu}, using 0");
+            //Console.WriteLine($"Warning: Invalid shift {miu}, using 0");
             miu = 0;
         }
 

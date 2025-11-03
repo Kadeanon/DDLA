@@ -40,6 +40,8 @@ public readonly struct MatrixView : IEnumerable<double>
 
     public readonly bool IsEmpty => Rows == 0 || Cols == 0;
 
+    public static readonly MatrixView Empty = new([], 0, 0);
+
     public readonly int Size => Cols * Rows;
     #endregion Properties
 
@@ -1039,7 +1041,7 @@ public readonly struct MatrixView : IEnumerable<double>
             }
             else
             {
-                Dictionary<(long x, long y), double>
+                Dictionary<(int x, int y), double>
                     values = new(mat.Size);
                 for (int i = 0; i < mat.Rows; i++)
                 {
@@ -1055,10 +1057,10 @@ public readonly struct MatrixView : IEnumerable<double>
         public MatrixSpanDebugView(Matrix mat)
             : this(mat.View) { }
 
-        public long Rows { get; }
-        public long Cols { get; }
-        public long RowStride { get; }
-        public long ColStride { get; }
+        public int Rows { get; }
+        public int Cols { get; }
+        public int RowStride { get; }
+        public int ColStride { get; }
 
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         public readonly bool TooLong => Rows * Cols > TooLongLimit;

@@ -116,6 +116,32 @@ namespace DDLA.Misc.Pools
             return new(Instance, handle);
         }
 
+        public static MatrixHandle TakeMatrixView(int rows, int cols,
+            out MatrixView mat, bool rowMajor = true, bool init = true)
+        {
+            var handle = new ArrayHandle<double, ArrayPool<double>>
+                (Instance.Pool, rows * cols, out var data);
+            if (rowMajor)
+                mat = new(data, 0, rows, cols, cols, 1);
+            else
+                mat = new(data, 0, rows, cols, 1, rows);
+            if (init) mat.Clear();
+            return new(Instance, handle);
+        }
+
+        public static MatrixHandle TakeMatrixView(int rows, int cols,
+            out MatrixView mat, double fill, bool rowMajor = true)
+        {
+            var handle = new ArrayHandle<double, ArrayPool<double>>
+                (Instance.Pool, rows * cols, out var data);
+            if (rowMajor)
+                mat = new(data, 0, rows, cols, cols, 1);
+            else
+                mat = new(data, 0, rows, cols, 1, rows);
+            mat.Fill(fill);
+            return new(Instance, handle);
+        }
+
         public static ArrayHandle TakeArraySegement(int length,
             out ArraySegment<double> seg, bool init = true)
         {

@@ -188,8 +188,8 @@ public partial class MArray
     #region Alloc
     public static MArray CreateUninitialized(ReadOnlySpan<int> shape)
     {
-        int length = shape.Product();
-        long totalSize = length * 8;
+        var length = shape.Product();
+        var totalSize = length * 8;
         var sizeB = totalSize % 1024;
         totalSize /= 1024;
         var sizeKB = totalSize % 1024;

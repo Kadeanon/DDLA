@@ -140,8 +140,6 @@ public static partial class BlasProvider
                     Src = src;
                 }
 
-                Console.WriteLine(UpLo);
-                Console.WriteLine(DiagUnit);
                 DiagUnit = unit is DiagType.Unit;
                 Buffer = buffer;
                 BlockSize = mr;

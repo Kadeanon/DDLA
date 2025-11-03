@@ -75,8 +75,8 @@ internal class TestSEvd
         Console.WriteLine($"nrmf(diff)={(Q * (T * Q.T) - mat).NrmF()}");
         Console.WriteLine($"nrmf(QQT-I)={(Q * Q.T - Matrix.Eyes(len)).NrmF()}");
 
-        var span = DateTime.Now - start;
-        Console.WriteLine($"Tridiag time out: {span}");
+        var tridiagSpan = DateTime.Now - start;
+        Console.WriteLine($"Tridiag time out: {tridiagSpan}");
 
         start = DateTime.Now;
         var diag = tridiag.Diag;
@@ -85,8 +85,10 @@ internal class TestSEvd
         fran.Kernel();
         var eigenValues = diag;
 
-        span = DateTime.Now - start;
-        Console.WriteLine($"Final diag time out: {span}");
+        var diagSpan = DateTime.Now - start;
+        Console.WriteLine($"Final diag time out: {diagSpan}");
+        var franSpan = diagSpan + tridiagSpan;
+        Console.WriteLine($"Total time out: {franSpan}");
 
         for (var i = 0; i < len; i++)
         {
@@ -102,11 +104,10 @@ internal class TestSEvd
         var toMkl = orig.Clone();
         var s = Vector.Create(len);
         start = DateTime.Now;
-        MKL.set_threading_layer(MklThreading.SEQUENTIAL);
         Lapack.syevd(Layout.RowMajor, 'V', UpLoChar.Lower,
             len, toMkl.Data, toMkl.RowStride,
             s.Data);
-        span = DateTime.Now - start;
+        var mklSpan = DateTime.Now - start;
 
         var E = Matrix.Eyes(len);
         E.Diag = s;
@@ -114,8 +115,9 @@ internal class TestSEvd
         var diff = Q * (E * Q.T) - mat;
         Console.WriteLine($"nrmf(QQ^T-I)={QNorm(Q)}");
         Console.WriteLine($"nrmf(diff)={diff.NrmF()}");
-        Console.WriteLine($"MKL time out: {span}");
-
+        Console.WriteLine($"MKL time out: {mklSpan}");
+        var speedRate = franSpan.TotalSeconds / mklSpan.TotalSeconds - 1;
+        Console.WriteLine($"Speed rate (our / MKL - 1): {speedRate}");
     }
 
     static double QNorm(MatrixView Q)

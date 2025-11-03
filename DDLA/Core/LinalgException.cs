@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace DDLA.Core;
 
@@ -25,6 +26,7 @@ public class LinalgException : Exception
         ErrorCode = 0;
     }
 
+    [DebuggerHidden]
     [DoesNotReturn]
     public static void ThrowConvergenceFailed(string functionName = "unknown")
     {

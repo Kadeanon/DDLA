@@ -129,7 +129,7 @@ public class FrancisQRSEVD(VectorView d,
         using var _ = PoolUtils.Borrow<Givens>(e.Length, out var rots);
         ImplicitQrTridiag(d, e, Q, rots);
         SortResults();
-        Console.WriteLine($"Average calculate a eigenValue use {TotalIter / d.Length} sweep.");
+        //Console.WriteLine($"Average calculate a eigenValue use {TotalIter / d.Length} sweep.");
     }
 
     void SortResults()
@@ -262,10 +262,10 @@ public class FrancisQRSEVD(VectorView d,
                 // 矩阵分割，处理子问题
                 // 左边：start..m 右边：m..end
                 // 递归调用
-                var dStart = d.Offset;
-                Console.WriteLine(
-                    $"[DEBUG]Split: {dStart + start}..{dStart + m} " +
-                    $"and {dStart + m}..{dStart + end + 1}");
+                //var dStart = d.Offset;
+                //Console.WriteLine(
+                //    $"[DEBUG]Split: {dStart + start}..{dStart + m} " +
+                //    $"and {dStart + m}..{dStart + end + 1}");
 
                 var d0 = d[start..(m + 1)];
                 var e0 = e[start..m];

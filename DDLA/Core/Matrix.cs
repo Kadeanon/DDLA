@@ -758,7 +758,7 @@ public class Matrix : IEnumerable<double>
     public void ShiftDiag(double alpha)
         => BlasProvider.Shift(alpha, View.Diag);
 
-    public void SwapCol(int i, int j)
+    public void SwapColumn(int i, int j)
         => BlasProvider.Swap(View.GetColumn(i), View.GetColumn(j));
 
     public void SwapRow(int i, int j)

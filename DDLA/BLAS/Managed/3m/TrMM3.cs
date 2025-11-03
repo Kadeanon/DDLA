@@ -41,9 +41,6 @@ public static partial class BlasProvider
         using var bBufferHandler = InternelPool.TakeArraySegement(
             KC * NCEffective, out var bufferB, init: false);
 
-        Console.WriteLine($"aUplo={aUplo}, Effect={aUplo}, aDiag={aDiag}");
-        Console.WriteLine($"bUplo={bUplo}, Effect={Transpose(bUplo)}, bDiag={bDiag}");
-
         for (int ic = 0; ic < m; ic += MC)
         {
             var mc = Math.Min(MC, (m - ic));

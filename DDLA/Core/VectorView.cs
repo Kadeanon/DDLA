@@ -495,6 +495,11 @@ public readonly struct VectorView
     {
         if (IsEmpty)
             return this;
+        var norm = NrmF();
+        if(norm <= 0)
+            throw new DivideByZeroException("Cannot normalize a zero vector.");
+        if (!double.IsFinite(norm))
+            throw new InvalidOperationException("Cannot normalize a vector with infinite norm.");
         BlasProvider.InvScal(NrmF(), this);
         return this;
     }
@@ -621,8 +626,8 @@ public readonly ref struct VectorDebugView
         }
     }
 
-    public long Length { get; }
-    public long Stride { get; }
+    public int Length { get; }
+    public int Stride { get; }
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     public bool TooLong => Length > TooLongLimit;

@@ -363,15 +363,15 @@ internal class TwoStageBidiag : BidiagBase
 
     public override void Kernel()
     {
-        DateTime start = DateTime.Now;
+        //DateTime start = DateTime.Now;
         Ge2Bd();
-        var span = DateTime.Now - start;
-        Console.WriteLine($"Ge2Bd time out: {span}");
+        //var span = DateTime.Now - start;
+        //Console.WriteLine($"Ge2Bd time out: {span}");
 
-        start = DateTime.Now;
+        //start = DateTime.Now;
         Bd2Bi();
-        span = DateTime.Now - start;
-        Console.WriteLine($"Bd2Bi time out: {span}");
+        //span = DateTime.Now - start;
+        //Console.WriteLine($"Bd2Bi time out: {span}");
         // Extract diagonal and subdiagonal
         Work.Diag.CopyTo(Diag);
         Work[.., 1..].Diag.CopyTo(SubDiag);

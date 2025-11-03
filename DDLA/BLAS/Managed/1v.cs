@@ -42,7 +42,7 @@ public static partial class BlasProvider
 
     public static partial class Details
     {
-        public static void AxpbyV_Impl(ref scalar xHead, scalar alpha, scalar beta, 
+        public static void AxpbyV_Impl(ref scalar xHead, scalar alpha, scalar beta,
             ref scalar yHead, DoubleIndice indice)
         {
             if ((indice.Length == 0) || (alpha == 0.0 && beta == 1.0))
@@ -243,7 +243,7 @@ public static partial class BlasProvider
 
         public static void DotV_Kernel(ref scalar xHead, ref scalar yHead, DoubleIndice indice, out scalar rho)
         {
-            rho = 0.0; 
+            rho = 0.0;
             int i = 0;
             for (; i < indice.Length - 4; i += 4)
             {
@@ -287,7 +287,7 @@ public static partial class BlasProvider
             throw new ArgumentException(
                 $"Error: alpha must be a finite non-zero value(got {alpha}).");
         }
-        if(alpha != 1)
+        if (alpha != 1)
             x.Map<MultiplyOperator<scalar>, scalar>(1 / alpha);
     }
 
@@ -295,7 +295,7 @@ public static partial class BlasProvider
     {
         if (alpha == 0.0 || alpha == -0.0)
             Set(alpha, x);
-        else if(alpha != 1)
+        else if (alpha != 1)
             x.Map<MultiplyOperator<scalar>, scalar>(alpha);
     }
 
@@ -303,7 +303,7 @@ public static partial class BlasProvider
     {
         if (alpha == 0.0 || alpha == -0.0)
             Set(alpha, y);
-        else if(alpha != 1)
+        else if (alpha != 1)
             x.Map<MultiplyOperator<scalar>, scalar>(alpha, y, default);
         else
             Copy(x, y);
@@ -329,7 +329,7 @@ public static partial class BlasProvider
 
     public static partial class Details
     {
-        public static void SwapV_Impl(ref scalar xHead, 
+        public static void SwapV_Impl(ref scalar xHead,
             ref scalar yHead, DoubleIndice indice)
         {
             if (indice.Length == 0)
@@ -423,7 +423,7 @@ public static partial class BlasProvider
         => x.Combine<DoubleXpbyOperator, scalar>(beta, y);
 
     public static scalar RMS(in vector x)
-        => x.Length == 0 ? 0.0 : 
+        => x.Length == 0 ? 0.0 :
         Math.Sqrt(Sum<SquareOperator<scalar>>(x) / x.Length);
 
     /// <summary>
@@ -448,81 +448,84 @@ public static partial class BlasProvider
         if (length == 0) return;
         if (giv.c == 1 && giv.s == 0) return;
 
-        RotInner(in x, in y, giv.c, giv.s);
+        Details.RotInner(in x, in y, giv.c, giv.s);
     }
 
-    //[Optimize]
-    internal unsafe static void RotInner(in vector x, in vector y, double c, double s)
+    public partial class Details
     {
-        int length = CheckLength(x, y);
+        //[Optimize]
+        internal unsafe static void RotInner(in vector x, in vector y, double c, double s)
+        {
+            int length = CheckLength(x, y);
 
-        ref var xRef = ref x.GetHeadRef();
-        ref var yRef = ref y.GetHeadRef();
+            ref var xRef = ref x.GetHeadRef();
+            ref var yRef = ref y.GetHeadRef();
 
-        int i = 0;
-        if (length > SIMDVec.Count * 4 &&
-            x.Stride == 1 && y.Stride == 1)
-        {
-            for (var len = 0; len < 32; len += 4)
+            int i = 0;
+            if (length > SIMDVec.Count * 4 &&
+                x.Stride == 1 && y.Stride == 1)
             {
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * len)));
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * len)));
+                for (var len = 0; len < 32; len += 4)
+                {
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * len)));
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * len)));
+                }
+                var cVec = SIMDExt.Create(c);
+                var sVec = SIMDExt.Create(s);
+                var minuscVec = SIMDExt.Create(-s);
+                var fma = new MultiplyAddOperator<double>();
+                for (; i <= length - SIMDVec.Count; i += SIMDVec.Count)
+                {
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * 32)));
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * 32)));
+                    var xVec = SIMDExt.LoadUnsafe(ref xRef);
+                    var yVec = SIMDExt.LoadUnsafe(ref yRef);
+                    var tmp1 = sVec * yVec;
+                    var tmp2 = minuscVec * xVec;
+                    xVec = fma.Invoke(in cVec, in xVec, in tmp1);
+                    yVec = fma.Invoke(in cVec, in yVec, in tmp2);
+                    SIMDExt.StoreUnsafe(xVec, ref xRef);
+                    SIMDExt.StoreUnsafe(yVec, ref yRef);
+                    xRef = ref Unsafe.Add(ref xRef, SIMDVec.Count);
+                    yRef = ref Unsafe.Add(ref yRef, SIMDVec.Count);
+                }
             }
-            var cVec = SIMDExt.Create(c);
-            var sVec = SIMDExt.Create(s);
-            var minuscVec = SIMDExt.Create(-s);
-            var fma = new MultiplyAddOperator<double>();
-            for (; i <= length - SIMDVec.Count; i += SIMDVec.Count)
+            for (; i <= length - 4; i += 4)
             {
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * 32)));
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * 32)));
-                var xVec = SIMDExt.LoadUnsafe(ref xRef);
-                var yVec = SIMDExt.LoadUnsafe(ref yRef);
-                var tmp1 = sVec * yVec;
-                var tmp2 = minuscVec * xVec;
-                xVec = fma.Invoke(in cVec, in xVec, in tmp1);
-                yVec = fma.Invoke(in cVec, in yVec, in tmp2);
-                SIMDExt.StoreUnsafe(xVec, ref xRef);
-                SIMDExt.StoreUnsafe(yVec, ref yRef);
-                xRef = ref Unsafe.Add(ref xRef, SIMDVec.Count);
-                yRef = ref Unsafe.Add(ref yRef, SIMDVec.Count);
+                double xVal = xRef;
+                double yVal = yRef;
+                xRef = c * xVal + s * yVal;
+                yRef = c * yVal - s * xVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                xVal = xRef;
+                yVal = yRef;
+                xRef = c * xVal + s * yVal;
+                yRef = c * yVal - s * xVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                xVal = xRef;
+                yVal = yRef;
+                xRef = c * xVal + s * yVal;
+                yRef = c * yVal - s * xVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                xVal = xRef;
+                yVal = yRef;
+                xRef = c * xVal + s * yVal;
+                yRef = c * yVal - s * xVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
             }
-        }
-        for (; i <= length - 4; i += 4)
-        {
-            double xVal = xRef;
-            double yVal = yRef;
-            xRef = c * xVal + s * yVal;
-            yRef = c * yVal - s * xVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            xVal = xRef;
-            yVal = yRef;
-            xRef = c * xVal + s * yVal;
-            yRef = c * yVal - s * xVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            xVal = xRef;
-            yVal = yRef;
-            xRef = c * xVal + s * yVal;
-            yRef = c * yVal - s * xVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            xVal = xRef;
-            yVal = yRef;
-            xRef = c * xVal + s * yVal;
-            yRef = c * yVal - s * xVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-        }
-        for (; i < length; i++)
-        {
-            double xVal = xRef;
-            double yVal = yRef;
-            xRef = c * xVal + s * yVal;
-            yRef = c * yVal - s * xVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
+            for (; i < length; i++)
+            {
+                double xVal = xRef;
+                double yVal = yRef;
+                xRef = c * xVal + s * yVal;
+                yRef = c * yVal - s * xVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+            }
         }
     }
 
@@ -536,132 +539,135 @@ public static partial class BlasProvider
         if (giv1.c == 1 && giv1.s == 0)
         {
             if (giv2.c != 1 || giv2.s != 0)
-                RotInner(y, z, giv2.c, giv2.s);
+                Details.RotInner(y, z, giv2.c, giv2.s);
         }
         else if (giv2.c == 1 && giv2.s == 0)
         {
-            RotInner(x, y, giv1.c, giv1.s);
+            Details.RotInner(x, y, giv1.c, giv1.s);
         }
         else
         {
-            Rot2Inner(x, y, z, giv1.c, giv1.s, giv2.c, giv2.s);
+            Details.Rot2Inner(x, y, z, giv1.c, giv1.s, giv2.c, giv2.s);
         }
     }
 
-    //[Optimize]
-    internal unsafe static void Rot2Inner(in vector x, in vector y, in vector z, scalar c1, scalar s1,
-        scalar c2, scalar s2)
+    public partial class Details
     {
-        int length = CheckLength(x, y);
-
-        ref var xRef = ref x.GetHeadRef();
-        ref var yRef = ref y.GetHeadRef();
-        ref var zRef = ref z.GetHeadRef();
-
-        int i = 0;
-        if (length > SIMDVec.Count * 4 &&
-            x.Stride == 1 && y.Stride == 1 && z.Stride == 1)
+        //[Optimize]
+        internal unsafe static void Rot2Inner(in vector x, in vector y, in vector z, scalar c1, scalar s1,
+            scalar c2, scalar s2)
         {
-            for (var len = 0; len < 32; len += 4)
+            int length = CheckLength(x, y);
+
+            ref var xRef = ref x.GetHeadRef();
+            ref var yRef = ref y.GetHeadRef();
+            ref var zRef = ref z.GetHeadRef();
+
+            int i = 0;
+            if (length > SIMDVec.Count * 4 &&
+                x.Stride == 1 && y.Stride == 1 && z.Stride == 1)
             {
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * len)));
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * len)));
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref zRef, SIMDVec.Count * len)));
+                for (var len = 0; len < 32; len += 4)
+                {
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * len)));
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * len)));
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref zRef, SIMDVec.Count * len)));
+                }
+                var c1Vec = SIMDExt.Create(c1);
+                var s1Vec = SIMDExt.Create(s1);
+                var minuss1Vec = SIMDExt.Create(-s1);
+                var c2Vec = SIMDExt.Create(c2);
+                var s2Vec = SIMDExt.Create(s2);
+                var minuss2Vec = SIMDExt.Create(-s2);
+                var fma = new MultiplyAddOperator<double>();
+                for (; i <= length - SIMDVec.Count; i += SIMDVec.Count)
+                {
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * 32)));
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * 32)));
+                    Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref zRef, SIMDVec.Count * 32)));
+                    var xVec = SIMDExt.LoadUnsafe(ref xRef);
+                    var yVec = SIMDExt.LoadUnsafe(ref yRef);
+                    var tmp1 = s1Vec * yVec;
+                    var tmp2 = minuss1Vec * xVec;
+                    xVec = fma.Invoke(in c1Vec, in xVec, in tmp1);
+                    yVec = fma.Invoke(in c1Vec, in yVec, in tmp2);
+                    var zVec = SIMDExt.LoadUnsafe(ref zRef);
+                    tmp1 = s2Vec * zVec;
+                    tmp2 = minuss2Vec * yVec;
+                    yVec = fma.Invoke(in c2Vec, in yVec, in tmp1);
+                    zVec = fma.Invoke(in c2Vec, in zVec, in tmp2);
+                    SIMDExt.StoreUnsafe(xVec, ref xRef);
+                    SIMDExt.StoreUnsafe(yVec, ref yRef);
+                    SIMDExt.StoreUnsafe(zVec, ref zRef);
+                    xRef = ref Unsafe.Add(ref xRef, SIMDVec.Count);
+                    yRef = ref Unsafe.Add(ref yRef, SIMDVec.Count);
+                    zRef = ref Unsafe.Add(ref zRef, SIMDVec.Count);
+                }
             }
-            var c1Vec = SIMDExt.Create(c1);
-            var s1Vec = SIMDExt.Create(s1);
-            var minuss1Vec = SIMDExt.Create(-s1);
-            var c2Vec = SIMDExt.Create(c2);
-            var s2Vec = SIMDExt.Create(s2);
-            var minuss2Vec = SIMDExt.Create(-s2);
-            var fma = new MultiplyAddOperator<double>();
-            for (; i <= length - SIMDVec.Count; i += SIMDVec.Count)
+            for (; i <= length - 4; i += 4)
             {
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref xRef, SIMDVec.Count * 32)));
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref yRef, SIMDVec.Count * 32)));
-                Sse.Prefetch1(Unsafe.AsPointer(ref Unsafe.Add(ref zRef, SIMDVec.Count * 32)));
-                var xVec = SIMDExt.LoadUnsafe(ref xRef);
-                var yVec = SIMDExt.LoadUnsafe(ref yRef);
-                var tmp1 = s1Vec * yVec;
-                var tmp2 = minuss1Vec * xVec;
-                xVec = fma.Invoke(in c1Vec, in xVec, in tmp1);
-                yVec = fma.Invoke(in c1Vec, in yVec, in tmp2);
-                var zVec = SIMDExt.LoadUnsafe(ref zRef);
-                tmp1 = s2Vec * zVec;
-                tmp2 = minuss2Vec * yVec;
-                yVec = fma.Invoke(in c2Vec, in yVec, in tmp1);
-                zVec = fma.Invoke(in c2Vec, in zVec, in tmp2);
-                SIMDExt.StoreUnsafe(xVec, ref xRef);
-                SIMDExt.StoreUnsafe(yVec, ref yRef);
-                SIMDExt.StoreUnsafe(zVec, ref zRef);
-                xRef = ref Unsafe.Add(ref xRef, SIMDVec.Count);
-                yRef = ref Unsafe.Add(ref yRef, SIMDVec.Count);
-                zRef = ref Unsafe.Add(ref zRef, SIMDVec.Count);
+                double xVal = xRef;
+                double yVal = yRef;
+                double zVal = zRef;
+                xRef = c1 * xVal + s1 * yVal;
+                yRef = c1 * yVal - s1 * xVal;
+                yVal = yRef;
+                yRef = c2 * yVal + s2 * zVal;
+                zRef = c2 * zVal - s2 * yVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                zRef = ref Unsafe.Add(ref zRef, z.Stride);
+
+                xVal = xRef;
+                yVal = yRef;
+                zVal = zRef;
+                xRef = c1 * xVal + s1 * yVal;
+                yRef = c1 * yVal - s1 * xVal;
+                yVal = yRef;
+                yRef = c2 * yVal + s2 * zVal;
+                zRef = c2 * zVal - s2 * yVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                zRef = ref Unsafe.Add(ref zRef, z.Stride);
+
+                xVal = xRef;
+                yVal = yRef;
+                zVal = zRef;
+                xRef = c1 * xVal + s1 * yVal;
+                yRef = c1 * yVal - s1 * xVal;
+                yVal = yRef;
+                yRef = c2 * yVal + s2 * zVal;
+                zRef = c2 * zVal - s2 * yVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                zRef = ref Unsafe.Add(ref zRef, z.Stride);
+
+                xVal = xRef;
+                yVal = yRef;
+                zVal = zRef;
+                xRef = c1 * xVal + s1 * yVal;
+                yRef = c1 * yVal - s1 * xVal;
+                yVal = yRef;
+                yRef = c2 * yVal + s2 * zVal;
+                zRef = c2 * zVal - s2 * yVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                zRef = ref Unsafe.Add(ref zRef, z.Stride);
             }
-        }
-        for (; i <= length - 4; i += 4)
-        {
-            double xVal = xRef;
-            double yVal = yRef;
-            double zVal = zRef;
-            xRef = c1 * xVal + s1 * yVal;
-            yRef = c1 * yVal - s1 * xVal;
-            yVal = yRef;
-            yRef = c2 * yVal + s2 * zVal;
-            zRef = c2 * zVal - s2 * yVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            zRef = ref Unsafe.Add(ref zRef, z.Stride);
-
-            xVal = xRef;
-            yVal = yRef;
-            zVal = zRef;
-            xRef = c1 * xVal + s1 * yVal;
-            yRef = c1 * yVal - s1 * xVal;
-            yVal = yRef;
-            yRef = c2 * yVal + s2 * zVal;
-            zRef = c2 * zVal - s2 * yVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            zRef = ref Unsafe.Add(ref zRef, z.Stride);
-
-            xVal = xRef;
-            yVal = yRef;
-            zVal = zRef;
-            xRef = c1 * xVal + s1 * yVal;
-            yRef = c1 * yVal - s1 * xVal;
-            yVal = yRef;
-            yRef = c2 * yVal + s2 * zVal;
-            zRef = c2 * zVal - s2 * yVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            zRef = ref Unsafe.Add(ref zRef, z.Stride);
-
-            xVal = xRef;
-            yVal = yRef;
-            zVal = zRef;
-            xRef = c1 * xVal + s1 * yVal;
-            yRef = c1 * yVal - s1 * xVal;
-            yVal = yRef;
-            yRef = c2 * yVal + s2 * zVal;
-            zRef = c2 * zVal - s2 * yVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            zRef = ref Unsafe.Add(ref zRef, z.Stride);
-        }
-        for (; i < length; i++)
-        {
-            double xVal = xRef;
-            double yVal = yRef;
-            double zVal = zRef;
-            xRef = c1 * xVal + s1 * yVal;
-            yRef = c1 * yVal - s1 * xVal;
-            yVal = yRef;
-            yRef = c2 * yVal + s2 * zVal;
-            zRef = c2 * zVal - s2 * yVal;
-            xRef = ref Unsafe.Add(ref xRef, x.Stride);
-            yRef = ref Unsafe.Add(ref yRef, y.Stride);
-            zRef = ref Unsafe.Add(ref zRef, z.Stride);
+            for (; i < length; i++)
+            {
+                double xVal = xRef;
+                double yVal = yRef;
+                double zVal = zRef;
+                xRef = c1 * xVal + s1 * yVal;
+                yRef = c1 * yVal - s1 * xVal;
+                yVal = yRef;
+                yRef = c2 * yVal + s2 * zVal;
+                zRef = c2 * zVal - s2 * yVal;
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+                yRef = ref Unsafe.Add(ref yRef, y.Stride);
+                zRef = ref Unsafe.Add(ref zRef, z.Stride);
+            }
         }
     }
 
@@ -673,5 +679,4 @@ public static partial class BlasProvider
             throw new ArgumentException("Error: x and z must have the same length.");
         return new(x.Length, x.Stride, y.Stride, z.Stride);
     }
-
 }

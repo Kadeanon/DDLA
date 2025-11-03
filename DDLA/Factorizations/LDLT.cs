@@ -40,14 +40,14 @@ public class LDLT
     }
 
     /// <summary>
-    /// Performs Cholesky decomposition on a symmetric positive-definite matrix A.
+    /// Performs LDLT decomposition on a symmetric positive-definite matrix A.
     /// The decomposition finds a lower (or upper) triangular matrix L (or U) such that:
     /// <para />
-    ///     A = L * L~   (if UpLo == Lower)
+    ///     A = L * D * Lᵗ   (if UpLo == Lower)
     /// <para />
-    ///     A = Uᵗ * U   (if UpLo == Upper)
+    ///     A = Uᵗ * D * U   (if UpLo == Upper)
     /// <para />
-    /// The result overwrites A with its Cholesky factor.
+    /// The result overwrites A with its LDLT factor.
     /// </summary>
     /// <param name="A">The input matrix (must be square and symmetric positive-definite).</param>
     /// <exception cref="ArgumentException">Thrown if the matrix is not square.</exception>

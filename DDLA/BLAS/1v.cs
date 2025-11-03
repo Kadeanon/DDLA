@@ -156,7 +156,7 @@ public static partial class BlasProvider
         if (length == 0) return;
         if (giv.c == 1 && giv.s == 0) return;
 
-        DDLA.BLAS.Managed.BlasProvider.RotInner(in x, in y, giv.c, giv.s);
+        Managed.BlasProvider.Details.RotInner(in x, in y, giv.c, giv.s);
     }
 
     /// <summary>
@@ -169,15 +169,15 @@ public static partial class BlasProvider
         if (giv1.c == 1 && giv1.s == 0)
         {
             if (giv2.c != 1 || giv2.s != 0)
-                DDLA.BLAS.Managed.BlasProvider.RotInner(y, z, giv2.c, giv2.s);
+                Managed.BlasProvider.Details.RotInner(y, z, giv2.c, giv2.s);
         }
         else if (giv2.c == 1 && giv2.s == 0)
         {
-            DDLA.BLAS.Managed.BlasProvider.RotInner(x, y, giv1.c, giv1.s);
+            Managed.BlasProvider.Details.RotInner(x, y, giv1.c, giv1.s);
         }
         else
         {
-            DDLA.BLAS.Managed.BlasProvider.Rot2Inner(x, y, z, giv1.c, giv1.s, giv2.c, giv2.s);
+            Managed.BlasProvider.Details.Rot2Inner(x, y, z, giv1.c, giv1.s, giv2.c, giv2.s);
         }
     }
 }

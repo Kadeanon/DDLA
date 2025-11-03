@@ -15,19 +15,19 @@ public class TestSVD
     private int RandLarge() => Random.Shared.Next(785, 1536);
 
     [TestMethod]
-    public void TestTinySEVDLower()
+    public void TestTinySVDLower()
     => TestSVDCore(RandTiny, RandTiny);
 
     [TestMethod]
-    public void TestSmallSEVDLower()
+    public void TestSmallSVDLower()
     => TestSVDCore(RandSmall, RandSmall);
 
     [TestMethod]
-    public void TestMediumSEVDLower()
+    public void TestMediumSVDLower()
     => TestSVDCore(RandMedium, RandMedium);
 
     [TestMethod]
-    public void TestLargeSEVDLower()
+    public void TestLargeSVDLower()
     => TestSVDCore(RandLarge, RandLarge, 1e-9);
 
     private static void TestSVDCore(Func<int> rows, Func<int> cols, double tol = 1e-10)
@@ -44,7 +44,7 @@ public class TestSVD
             Matrix A = Matrix.RandomDense(m, n);
             Matrix orig = A.Clone();
 
-            // Compute EVD: A = Q * D * Q^T
+            // Compute SVD: A = Q * D * Q^T
             var (U, S, V) = new SVD(A);
 
             // Reconstruction error
