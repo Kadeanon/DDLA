@@ -98,7 +98,7 @@ public static class HouseHolder
         var len = a1.Length;
         if (len == 0 || tau == 0.0)
             return;
-        using var handle = InternelPool.TakeVector(len, out var w);
+        using var handle = InternalPool.TakeVector(len, out var w);
         a1.CopyTo(w);
 
         if (side == SideType.Left)

@@ -1,39 +1,30 @@
-﻿using DDLA.Core;
-using DDLA.Factorizations;
+﻿using DDLA.Factorizations;
 using DDLA.Misc;
 using DDLA.Misc.Flags;
-using DDLA.Misc.Pools;
-using static DDLA.BLAS.Managed.BlasProvider;
+using DDLA.Transformations;
+using static DDLA.BLAS.BlasProvider;
 
-namespace DDLA.Transformations;
+namespace ModulesInDev.SymmEVD.Tridiag;
 
-public static class Tridiagonaling
+public class HHUTTridiag : TridiagBase
 {
-    public static int BlockSize { get; } = 64;
+    private MatrixView T { get; }
 
-    public static Matrix CreateT(MatrixView A)
+    public override MatrixView Q => Work;
+
+    internal static int BlockSize => 128;
+
+    public HHUTTridiag(MatrixView orig) : base(orig)
     {
-        return Matrix.Create
-            (Math.Min(BlockSize, A.Rows), A.Rows);
+        var len = orig.Rows;
+
+        T = Matrix.Create(Math.Min(BlockSize, len), len);
     }
 
-    /// <summary>
-    /// Reduce a symmetric matrix A to tridiagonal form using
-    /// blocked HouseHolder UT Transformation. 
-    /// The method only use the lower triangular part of A.
-    /// </summary>
-    /// <param name="A">Orig matrix A, when back, the lower
-    /// triangular part of A will be overwritten by the 
-    /// HouseHolder vectors.</param>
-    /// <param name="T">A workspace matrix to save the upper 
-    /// triangular factors of the block Householder transformations</param>
-    /// <param name="d">A vector to save the diag elements.</param>
-    /// <param name="e">A vector to save the subdiag elements.</param>
-    public static void Tridiag(MatrixView A, MatrixView T,
-        VectorView d, VectorView e)
+    public override void Kernel()
     {
         var partA = PartitionGrid.Create
-            (A, 0, 0, Quadrant.TopLeft,
+            (Work, 0, 0, Quadrant.TopLeft,
             out var A00, out var A01, out var A02,
             out var A10, out var A11, out var A12,
             out var A20, out var A21, out var A22);
@@ -49,44 +40,22 @@ public static class Tridiagonaling
             using var partAStep = partA.Step(block, block);
             using var partTStep = partT.Step(block);
 
-            var subDiagEnd = Math.Min(indexNext, e.Length);
-            var d1 = d[index..indexNext];
-            var e1 = e[index..subDiagEnd];
-            Step(ABR, T1[..block, ..], d1, e1);
+            var subDiagEnd = Math.Min(indexNext, SubDiag.Length);
+            var d = Diag[index..indexNext];
+            var e = SubDiag[index..subDiagEnd];
+            Step(ABR, T1[..block, ..], d, e);
             index = indexNext;
         }
-        FormQ(A, T);
+        FormQ(Work, T);
     }
 
-    /// <summary>
-    /// Reduce a symmetric matrix A to tridiagonal form using
-    /// blocked HouseHolder UT Transformation. 
-    /// The method only use the lower triangular part of A.
-    /// </summary>
-    /// <param name="A">Orig matrix A, when back, the lower
-    /// triangular part of A will be overwritten by the 
-    /// HouseHolder vectors.</param>
-    /// <param name="T">A workspace matrix to save the upper 
-    /// triangular factors of the block Householder transformations</param>
-    /// <param name="d">A vector to save the diag elements.</param>
-    /// <param name="e">A vector to save the subdiag elements.</param>
-    public static void Tridiag(MatrixView A, out MatrixView T,
-        out VectorView d, out VectorView e)
-    {
-        T = CreateT(A);
-        d = Vector.Create(A.Rows);
-        e = Vector.Create(A.Rows - 1);
-        Tridiag(A, T, d, e);
-    }
-
-    private static void Step(MatrixView A, MatrixView T,
+    internal static void Step(MatrixView A, MatrixView T,
         VectorView d, VectorView e)
     {
         int ARows = A.Rows;
         int TRows = T.Rows;
 
-        using var tmpHandle = 
-            InternalPool.TakeVector(ARows, out var tmp);
+        VectorView tmp = Vector.Create(ARows);
 
         for (var i = 0; i < TRows; i++)
         {
@@ -102,7 +71,9 @@ public static class Tridiagonaling
 
                 BuildHH(a21, out var sigma, out tau11);
 
-                SyMV(UpLo.Lower, 1, A22, a21, 0, p);
+                SyMV(UpLo.Lower,
+                    1, A22, a21,
+                    0, p);
                 var beta = a21 * p / (2 * tau11);
                 p.AddedBy(-beta, a21);
                 p.InvScaled(tau11);
@@ -116,15 +87,6 @@ public static class Tridiagonaling
         }
     }
 
-    /// <summary>
-    /// Generate the full orthogonal matrix Q from the matrices A and T
-    /// after the Tridiag method is completed. The resulting Q matrix
-    /// will directly overwrite the entire A matrix.
-    /// </summary>
-    /// <param name="A">The matrix A, which will be overwritten by the
-    /// resulting orthogonal matrix Q.</param>
-    /// <param name="T">The workspace matrix T containing the upper
-    /// triangular factors of the block Householder transformations.</param>
     internal static void FormQ(MatrixView A, MatrixView T)
     {
         for (int j = A.Rows - 2; j > 0; --j)
@@ -145,12 +107,15 @@ public static class Tridiagonaling
 
         var W = Matrix.Create(T.Rows, A.Cols);
 
-        int block, blockSize;
+        int block, b_alg;
+        int m_BR, n_BR;
 
-        blockSize = T.Rows;
+        b_alg = T.Rows;
+        m_BR = A.Rows - A.Cols;
+        n_BR = 0;
 
         var partA = PartitionGrid.Create
-            (A, A.Rows - A.Cols, 0, Quadrant.BottomRight,
+            (A, m_BR, n_BR, Quadrant.BottomRight,
             out var A00, out var A01, out var A02,
             out var A10, out var A11, out var A12,
             out var A20, out var A21, out var A22);
@@ -161,10 +126,10 @@ public static class Tridiagonaling
 
         while (T0.Cols > 0)
         {
-            block = Math.Min(blockSize, A00.MinDim);
+            block = Math.Min(b_alg, A00.MinDim);
 
-            if (T2.Cols == 0 && T.Cols % blockSize > 0)
-                block = T.Cols % blockSize;
+            if (T2.Cols == 0 && T.Cols % b_alg > 0)
+                block = T.Cols % b_alg;
 
             var ABR = A22;
             using var partAStep = partA.Step(block, block);
@@ -198,12 +163,12 @@ public static class Tridiagonaling
 
                 alphA11 = 1 - 1 / tau11;
 
-                a21.InvScaled(-tau11);
+                InvScal(-tau11, a21);
             }
         }
     }
 
-    internal static void BuildHH(VectorView x, out double sigma, out double tau)
+    public static void BuildHH(VectorView x, out double sigma, out double tau)
     {
         if (x.Length == 0)
             throw new ArgumentException("Vector length must be at least 1.", nameof(x));

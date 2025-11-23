@@ -94,9 +94,9 @@ public static partial class BlasProvider
 
         var MCEffective = Math.Min(MC, m.Align(MR));
         var NCEffective = Math.Min(NC, n.Align(NR));
-        using var aBufferHandler = InternelPool.TakeArraySegement(
+        using var aBufferHandler = InternalPool.TakeArraySegement(
             MCEffective * KC, out var bufferA, init: false);
-        using var bBufferHandler = InternelPool.TakeArraySegement(
+        using var bBufferHandler = InternalPool.TakeArraySegement(
             KC * NCEffective, out var bufferB, init: false);
 
         for (int ic = 0; ic < n; ic += MC)

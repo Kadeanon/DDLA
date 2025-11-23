@@ -79,7 +79,7 @@ public readonly struct GEMMMacroKernel : IMacroKernel
         var offset = i * length;
         var actualMR = Math.Min(MC - i * MR, MR);
         Span<scalar> bufferA = ABuffer.AsSpan(offset, length);
-        using var bufferHandler = InternelPool.TakeMatrix
+        using var bufferHandler = InternalPool.TakeMatrix
             (MR, NR, out var bufferCMatrix, !Kernel.preferCol, init: false);
         Span<scalar> bufferC = bufferCMatrix.GetSpan();
         for (int j = 0; j < NCAligned; j += NR)
@@ -162,7 +162,7 @@ public readonly struct GEMMTMacroKernel : IMacroKernel
         var offset = index * length;
         var actualMR = Math.Min(MC - i, MR);
         Span<scalar> bufferA = ABuffer.AsSpan(offset, length);
-        using var bufferHandler = InternelPool.TakeMatrix
+        using var bufferHandler = InternalPool.TakeMatrix
             (MR, NR, out var bufferCMatrix, !Kernel.preferCol, init: false);
         Span<scalar> bufferC = bufferCMatrix.GetSpan();
         for (int j = 0; j < NCAligned; j += NR)
@@ -223,7 +223,7 @@ public readonly struct GEMMTMacroKernel : IMacroKernel
         var offset = index * length;
         var actualMR = Math.Min(MC - i, MR);
         Span<scalar> bufferA = ABuffer.AsSpan(offset, length);
-        using var bufferHandler = InternelPool.TakeMatrix
+        using var bufferHandler = InternalPool.TakeMatrix
             (MR, NR, out var bufferCMatrix, !Kernel.preferCol, init: false);
         Span<scalar> bufferC = bufferCMatrix.GetSpan();
         for (int j = 0; j < NCAligned; j += NR)

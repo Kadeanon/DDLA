@@ -53,7 +53,7 @@ public static class Bidiagonaling
         var TVBlockSize = Math.Min(BlockSize, A.Cols - 1);
         var TU = Matrix.Create(TUBlockSize, wid, colMajor: true);
         var TV = Matrix.Create(TVBlockSize, wid);
-        using var bufferHandle = InternelPool.TakeVector(len, out var buffer); 
+        using var bufferHandle = InternalPool.TakeVector(len, out var buffer); 
         HHStepBlock(A, TU, TV, d, e, buffer);
         BuildUV(A, TU, TV, U, V, TUBlockSize, TVBlockSize);
     }
@@ -385,7 +385,7 @@ internal class TwoStageBidiag : BidiagBase
         // Use a blocked algorithm to reduce the matrix to upper band bidiagonal form
 
         // A buffer to apply qr dec with.
-        using var BufferHandle = InternelPool.TakeMatrix(TUBlockSize, U.Cols,
+        using var BufferHandle = InternalPool.TakeMatrix(TUBlockSize, U.Cols,
             out var Buffer, init: false);
 
         var partA = PartitionGrid.Create

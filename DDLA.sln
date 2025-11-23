@@ -5,7 +5,7 @@ VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DDLA", "DDLA\DDLA.csproj", "{3081CF2F-F666-4446-B878-E450E6EB8C37}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleExample", "SimpleExample\SimpleExample.csproj", "{73B73595-D233-4689-B583-C126BF837DC6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModulesInDev", "ModulesInDev\ModulesInDev.csproj", "{73B73595-D233-4689-B583-C126BF837DC6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{76A83EF1-5105-4300-BBF3-727CC66ADFA7}"
 	ProjectSection(SolutionItems) = preProject

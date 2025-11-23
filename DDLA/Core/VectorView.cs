@@ -508,7 +508,7 @@ public readonly struct VectorView
     {
         using var handle = StringBuilderPool.Borrow(out var sb);
         ToString(sb, 6, 4, null);
-        return $"VectorView[{Length}]{sb}";
+        return $"VectorView[{Length}]\n{sb}";
     }
 
     /// <summary>

@@ -603,9 +603,9 @@ public class Matrix : IEnumerable<double>
     public static Matrix operator /(Matrix left, double right)
         => left * (1.0 / right);
 
-    public static VectorView operator *(Matrix left, VectorView right)
+    public static Vector operator *(Matrix left, Vector right)
     {
-        var dest = VectorView.Create(left.Rows, true);
+        var dest = Vector.Create(left.Rows, true);
         BlasProvider.GeMV(1.0, left, right, 0.0, dest);
         return dest;
     }
