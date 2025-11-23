@@ -9,8 +9,40 @@ namespace DDLA.BLAS.Managed;
 public static partial class BlasProvider
 {
     /// <summary>
-    /// B += Trans?(A)
+    /// Performs an element-wise matrix addition.<br />
+    /// <paramref name="B"/> := <paramref name="B"/> + 
+    /// Trans?(Uplo?(<paramref name="A"/>)), <br />
+    /// using <paramref name="aDiag"/> and <paramref name="aUplo"/> to specify
+    /// the region on which the addition is performed, and
+    /// <paramref name="aTrans"/> to specify whether a transposed view of
+    /// <paramref name="A"/> is used.
     /// </summary>
+    /// <param name="aDiag">
+    /// When <paramref name="aUplo"/> is not <see cref="UpLo.Dense"/>,
+    /// specifies whether the diagonal elements are included in the addition:<br />
+    /// - <see cref="DiagType.NonUnit"/>: operate on diagonal elements as usual;<br />
+    /// - <see cref="DiagType.Unit"/>: skip diagonal elements in the addition.
+    /// </param>
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="aTrans">
+    /// Specifies whether <paramref name="A"/> is transposed:<br />
+    /// - <see cref="TransType.NoTrans"/> or 
+    ///   <see cref="TransType.OnlyConj"/>: no transpose;<br />
+    /// - <see cref="TransType.OnlyTrans"/> or 
+    ///   <see cref="TransType.ConjTrans"/>: transpose.
+    /// </param>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Input/output matrix B.</param>
+    /// <remarks>
+    /// If <paramref name="aTrans"/> requests a transpose,
+    /// the transposed matrix <paramref name="A"/> must be conformable
+    /// with <paramref name="B"/>.
+    /// </remarks>
     public static void Add(DiagType aDiag, UpLo aUplo, TransType aTrans,
         in matrix A, in matrix B)
     {
@@ -43,7 +75,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var start = A.DiagOffset + i;
+                    var start = i;
                     if (aDiag is DiagType.Unit)
                         start++;
                     start = Math.Max(start, 0);
@@ -58,7 +90,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = A.DiagOffset + i + 1;
+                    var end = i + 1;
                     if (aDiag is DiagType.Unit)
                         end--;
                     end = Math.Min(end, n);
@@ -73,19 +105,54 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// B += Trans?(A)
+    /// Performs an element-wise matrix addition.<br />
+    /// <paramref name="B"/> := <paramref name="B"/> + <paramref name="A"/>.
     /// </summary>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Input/output matrix B.</param>
     public static void Add(in matrix A, in matrix B)
         => Add(DiagType.NonUnit,
             UpLo.Dense, TransType.NoTrans,
             A, B);
 
     /// <summary>
-    /// B += alpha * Trans?(A)
+    /// Performs an element-wise scaled matrix addition.<br />
+    /// <paramref name="B"/> := <paramref name="B"/> + 
+    /// <paramref name="alpha"/> * Trans?(Uplo?(<paramref name="A"/>)), <br />
+    /// using <paramref name="aDiag"/> and <paramref name="aUplo"/> to specify
+    /// the region on which the addition is performed, and
+    /// <paramref name="aTrans"/> to specify whether a transposed view of
+    /// <paramref name="A"/> is used.
     /// </summary>
-    public static void Axpy
-        (DiagType aDiag, UpLo aUplo, TransType aTrans,
-        scalar alpha, in matrix A, in matrix B)
+    /// <param name="aDiag">
+    /// When <paramref name="aUplo"/> is not <see cref="UpLo.Dense"/>,
+    /// specifies whether the diagonal elements are included in the addition:<br />
+    /// - <see cref="DiagType.NonUnit"/>: operate on diagonal elements as usual;<br />
+    /// - <see cref="DiagType.Unit"/>: skip diagonal elements in the addition.
+    /// </param>
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="aTrans">
+    /// Specifies whether <paramref name="A"/> is transposed:<br />
+    /// - <see cref="TransType.NoTrans"/> or 
+    ///   <see cref="TransType.OnlyConj"/>: no transpose;<br />
+    /// - <see cref="TransType.OnlyTrans"/> or 
+    ///   <see cref="TransType.ConjTrans"/>: transpose.
+    /// </param>
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Input/output matrix B.</param>
+    /// <remarks>
+    /// If <paramref name="aTrans"/> requests a transpose,
+    /// the transposed matrix <paramref name="A"/> must be conformable
+    /// with <paramref name="B"/>.
+    /// </remarks>
+    public static void Axpy(DiagType aDiag, UpLo aUplo,
+        TransType aTrans, scalar alpha, in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
@@ -116,7 +183,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var start = A.DiagOffset + i;
+                    var start = i;
                     if (aDiag is DiagType.Unit)
                         start++;
                     start = Math.Max(start, 0);
@@ -131,7 +198,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = A.DiagOffset + i + 1;
+                    var end = i + 1;
                     if (aDiag is DiagType.Unit)
                         end--;
                     end = Math.Min(end, n);
@@ -146,20 +213,55 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// B += alpha * Trans?(A)
+    /// Performs an element-wise scaled matrix addition.<br />
+    /// <paramref name="B"/> := <paramref name="B"/> + 
+    /// <paramref name="alpha"/> * <paramref name="A"/>.
     /// </summary>
-    public static void Axpy(scalar alpha,
-        in matrix A, in matrix B)
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Input/output matrix B.</param>
+    public static void Axpy(scalar alpha, in matrix A,
+        in matrix B)
         => Axpy(DiagType.NonUnit,
             UpLo.Dense, TransType.NoTrans,
             alpha, A, B);
 
     /// <summary>
-    /// B = Trans?(A)
+    /// Performs an element-wise matrix copy.<br />
+    /// <paramref name="B"/> := 
+    /// Trans?(Uplo?(<paramref name="A"/>)), <br />
+    /// using <paramref name="aDiag"/> and <paramref name="aUplo"/> to specify
+    /// the region to be copied, and <paramref name="aTrans"/> to specify
+    /// whether a transposed view of <paramref name="A"/> is used.
     /// </summary>
-    public static void Copy
-        (DiagType aDiag, UpLo aUplo, TransType aTrans, int diagOffset,
-        in matrix A, in matrix B)
+    /// <param name="aDiag">
+    /// When <paramref name="aUplo"/> is not <see cref="UpLo.Dense"/>,
+    /// specifies whether the diagonal elements are copied:<br />
+    /// - <see cref="DiagType.NonUnit"/>: copy diagonal elements as usual;<br />
+    /// - <see cref="DiagType.Unit"/>: skip diagonal elements when copying.
+    /// </param>
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="aTrans">
+    /// Specifies whether <paramref name="A"/> is transposed:<br />
+    /// - <see cref="TransType.NoTrans"/> or 
+    ///   <see cref="TransType.OnlyConj"/>: no transpose;<br />
+    /// - <see cref="TransType.OnlyTrans"/> or 
+    ///   <see cref="TransType.ConjTrans"/>: transpose.
+    /// </param>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Output matrix B.</param>
+    /// <remarks>
+    /// If <paramref name="aTrans"/> requests a transpose,
+    /// the transposed matrix <paramref name="A"/> must be conformable
+    /// with <paramref name="B"/>.
+    /// </remarks>
+    public static void Copy(DiagType aDiag, UpLo aUplo,
+        TransType aTrans, in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
@@ -190,7 +292,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var start = A.DiagOffset + i;
+                    var start = i;
                     if (aDiag is DiagType.Unit)
                         start++;
                     start = Math.Max(start, 0);
@@ -205,7 +307,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = A.DiagOffset + i + 1;
+                    var end = i + 1;
                     if (aDiag is DiagType.Unit)
                         end--;
                     end = Math.Min(end, n);
@@ -220,17 +322,40 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// B = Trans?(A)
+    /// Performs an element-wise matrix copy.<br />
+    /// <paramref name="B"/> := <paramref name="A"/>.
     /// </summary>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Output matrix B.</param>
     public static void Copy(in matrix A, in matrix B)
         => Copy(DiagType.NonUnit,
-            UpLo.Dense, TransType.NoTrans, 0,
-            A, B);
+            UpLo.Dense, TransType.NoTrans, A, B);
 
     /// <summary>
-    /// A = A / alpha
+    /// Performs an element-wise matrix scaling operation.<br />
+    /// Uplo?(<paramref name="A"/>) := Uplo?(<paramref name="A"/>) 
+    /// / <paramref name="alpha"/>, <br />
+    /// using <paramref name="aUplo"/> to specify the region to be scaled.
     /// </summary>
-    public static void InvScal(UpLo aUplo, scalar alpha, in matrix A)
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input/output matrix A.</param>
+    /// <remarks>
+    /// Since the implementation internally uses the reciprocal of
+    /// <paramref name="alpha"/> to perform scaling, this may cause
+    /// precision issues in extreme cases.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="alpha"/> is 0, since it cannot be used
+    /// as a divisor.
+    /// </exception>
+    public static void InvScal(UpLo aUplo, scalar alpha,
+        in matrix A)
     {
         var (m, n) = CheckUploMatLength(A, aUplo);
         ArgumentOutOfRangeException.ThrowIfEqual(alpha, 0, nameof(alpha));
@@ -239,15 +364,38 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// A = A / alpha
+    /// Performs an element-wise matrix scaling operation.<br />
+    /// <paramref name="A"/> := <paramref name="A"/> 
+    /// / <paramref name="alpha"/>.
     /// </summary>
-    public static void InvScal(scalar alpha,
-        in matrix A)
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input/output matrix A.</param>
+    /// <remarks>
+    /// Since the implementation internally uses the reciprocal of
+    /// <paramref name="alpha"/> to perform scaling, this may cause
+    /// precision issues in extreme cases.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="alpha"/> is 0, since it cannot be used
+    /// as a divisor.
+    /// </exception>
+    public static void InvScal(scalar alpha, in matrix A)
         => InvScal(UpLo.Dense, alpha, A);
 
     /// <summary>
-    /// A = alpha * A
+    /// Performs an element-wise matrix scaling operation.<br />
+    /// Uplo?(<paramref name="A"/>) := <paramref name="alpha"/>
+    /// * Uplo?(<paramref name="A"/>), <br />
+    /// using <paramref name="aUplo"/> to specify the region to be scaled.
     /// </summary>
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input/output matrix A.</param>
     public static void Scal(UpLo aUplo, scalar alpha, in matrix A)
     {
         var (m, n) = CheckUploMatLength(A, aUplo);
@@ -276,7 +424,7 @@ public static partial class BlasProvider
         {
             for (int i = 0; i < m; i++)
             {
-                var start = Math.Max(A.DiagOffset + i, 0);
+                var start = Math.Max(i, 0);
                 if (start >= n)
                     break;
                 var rowA = AEffective.SliceRowUncheck(i, start);
@@ -287,7 +435,7 @@ public static partial class BlasProvider
         {
             for (int i = 0; i < m; i++)
             {
-                var end = Math.Min(n, A.DiagOffset + i + 1);
+                var end = Math.Min(n, i + 1);
                 if (end <= 0)
                     continue;
                 var rowA = AEffective.SliceRowUncheck(i, 0, end);
@@ -301,17 +449,53 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// A = alpha * A
+    /// Performs an element-wise matrix scaling operation.<br />
+    /// <paramref name="A"/> := <paramref name="alpha"/>
+    /// * <paramref name="A"/>.
     /// </summary>
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input/output matrix A.</param>
     public static void Scal(scalar alpha, in matrix A)
         => Scal(UpLo.Dense, alpha, A);
 
     /// <summary>
-    /// B = alpha * Trans?(A)
+    /// Performs an element-wise matrix scaling operation and stores the
+    /// result in another matrix.<br />
+    /// <paramref name="B"/> := <paramref name="alpha"/> 
+    /// * Trans?(Uplo?(<paramref name="A"/>)), <br />
+    /// using <paramref name="aDiag"/> and <paramref name="aUplo"/> to specify
+    /// the region to be scaled, and <paramref name="aTrans"/> to specify
+    /// whether a transposed view of <paramref name="A"/> is used.
     /// </summary>
-    public static void Scal2
-        (DiagType aDiag, UpLo aUplo, TransType aTrans,
-        scalar alpha, in matrix A, in matrix B)
+    /// <param name="aDiag">
+    /// When <paramref name="aUplo"/> is not <see cref="UpLo.Dense"/>,
+    /// specifies whether the diagonal elements are scaled:<br />
+    /// - <see cref="DiagType.NonUnit"/>: scale diagonal elements as usual;<br />
+    /// - <see cref="DiagType.Unit"/>: skip diagonal elements when scaling.
+    /// </param>
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="aTrans">
+    /// Specifies whether <paramref name="A"/> is transposed:<br />
+    /// - <see cref="TransType.NoTrans"/> or 
+    ///   <see cref="TransType.OnlyConj"/>: no transpose;<br />
+    /// - <see cref="TransType.OnlyTrans"/> or 
+    ///   <see cref="TransType.ConjTrans"/>: transpose.
+    /// </param>
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Output matrix B.</param>
+    /// <remarks>
+    /// If <paramref name="aTrans"/> requests a transpose,
+    /// the transposed matrix <paramref name="A"/> must be conformable
+    /// with <paramref name="B"/>.
+    /// </remarks>
+    public static void Scal2(DiagType aDiag, UpLo aUplo,
+        TransType aTrans, scalar alpha, in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
@@ -343,7 +527,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var start = A.DiagOffset + i;
+                    var start = i;
                     if (aDiag is DiagType.Unit)
                         start++;
                     start = Math.Max(start, 0);
@@ -358,7 +542,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = A.DiagOffset + i + 1;
+                    var end = i + 1;
                     if (aDiag is DiagType.Unit)
                         end--;
                     end = Math.Min(end, n);
@@ -373,25 +557,40 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// B = alpha * Trans?(A)
+    /// Performs an element-wise matrix scaling operation and stores the
+    /// result in another matrix.<br />
+    /// <paramref name="B"/> := <paramref name="A"/> 
+    /// * <paramref name="alpha"/>.
     /// </summary>
+    /// <param name="alpha">Scaling factor applied to <paramref name="A"/>.</param>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Output matrix B.</param>
     public static void Scal2(scalar alpha, in matrix A, in matrix B)
-        => Scal2(DiagType.NonUnit,
-            UpLo.Dense, TransType.NoTrans,
+        => Scal2(DiagType.NonUnit, UpLo.Dense, TransType.NoTrans,
             alpha, A, B);
 
     /// <summary>
-    /// A = alpha
+    /// Performs an element-wise matrix assignment operation.<br />
+    /// Uplo?(<paramref name="A"/>) := <paramref name="alpha"/>, <br />
+    /// using <paramref name="aDiag"/> and <paramref name="aUplo"/> to specify
+    /// the region to be assigned.
     /// </summary>
+    /// <param name="aDiag">
+    /// When <paramref name="aUplo"/> is not <see cref="UpLo.Dense"/>,
+    /// specifies whether the diagonal elements are assigned:<br />
+    /// - <see cref="DiagType.NonUnit"/>: assign diagonal elements as usual;<br />
+    /// - <see cref="DiagType.Unit"/>: skip diagonal elements when assigning.
+    /// </param>
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="alpha">The value assigned to <paramref name="A"/>.</param>
+    /// <param name="A">Output matrix A.</param>
     public static void Set
         (DiagType aDiag, UpLo aUplo, scalar alpha, in matrix A)
-        => Set(aDiag, aUplo, alpha, A, A.DiagOffset);
-
-    /// <summary>
-    /// A = alpha
-    /// </summary>
-    public static void Set
-        (DiagType aDiag, UpLo aUplo, scalar alpha, in matrix A, int diag)
     {
         var (m, n) = GetLengths(A);
         if (m == 0 || n == 0) return;
@@ -414,7 +613,7 @@ public static partial class BlasProvider
         {
             for (int i = 0; i < m; i++)
             {
-                var start = Math.Max(A.DiagOffset + i, 0);
+                var start = Math.Max(i, 0);
                 if (aDiag is DiagType.Unit)
                 {
                     start++;
@@ -429,7 +628,7 @@ public static partial class BlasProvider
         {
             for (int i = 0; i < m; i++)
             {
-                var end = Math.Min(n, A.DiagOffset + i + 1);
+                var end = Math.Min(n, i + 1);
                 if (aDiag is DiagType.Unit)
                 {
                     end--;
@@ -443,19 +642,51 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// A = alpha
+    /// Performs an element-wise matrix assignment operation.<br />
+    /// <paramref name="A"/> := <paramref name="alpha"/>.
     /// </summary>
-    public static void Set(scalar alpha,
-        in matrix A)
-        => Set(DiagType.NonUnit, UpLo.Dense,
-            alpha, A, A.DiagOffset);
+    /// <param name="alpha">The value assigned to <paramref name="A"/>.</param>
+    /// <param name="A">Output matrix A.</param>
+    public static void Set(scalar alpha, in matrix A)
+        => Set(DiagType.NonUnit, UpLo.Dense, alpha, A);
 
     /// <summary>
-    /// B -= Trans?(A)
+    /// Performs an element-wise matrix subtraction.<br />
+    /// <paramref name="B"/> := <paramref name="B"/> - 
+    /// Trans?(Uplo?(<paramref name="A"/>)), <br />
+    /// using <paramref name="aDiag"/> and <paramref name="aUplo"/> to specify
+    /// the region on which the subtraction is performed, and
+    /// <paramref name="aTrans"/> to specify whether a transposed view of
+    /// <paramref name="A"/> is used.
     /// </summary>
-    public static void Sub
-        (DiagType aDiag, UpLo aUplo, TransType aTrans,
-        in matrix A, in matrix B)
+    /// <param name="aDiag">
+    /// When <paramref name="aUplo"/> is not <see cref="UpLo.Dense"/>,
+    /// specifies whether the diagonal elements are included in the subtraction:<br />
+    /// - <see cref="DiagType.NonUnit"/>: operate on diagonal elements as usual;<br />
+    /// - <see cref="DiagType.Unit"/>: skip diagonal elements in the subtraction.
+    /// </param>
+    /// <param name="aUplo">
+    /// Specifies the region of the matrix to be processed:<br />
+    /// - <see cref="UpLo.Dense"/>: the entire matrix;<br />
+    /// - <see cref="UpLo.Upper"/>: only the upper triangular part;<br />
+    /// - <see cref="UpLo.Lower"/>: only the lower triangular part.
+    /// </param>
+    /// <param name="aTrans">
+    /// Specifies whether <paramref name="A"/> is transposed:<br />
+    /// - <see cref="TransType.NoTrans"/> or 
+    ///   <see cref="TransType.OnlyConj"/>: no transpose;<br />
+    /// - <see cref="TransType.OnlyTrans"/> or 
+    ///   <see cref="TransType.ConjTrans"/>: transpose.
+    /// </param>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Input/output matrix B.</param>
+    /// <remarks>
+    /// If <paramref name="aTrans"/> requests a transpose,
+    /// the transposed matrix <paramref name="A"/> must be conformable
+    /// with <paramref name="B"/>.
+    /// </remarks>
+    public static void Sub(DiagType aDiag, UpLo aUplo,
+        TransType aTrans, in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
@@ -487,7 +718,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var start = A.DiagOffset + i;
+                    var start = i;
                     if (aDiag is DiagType.Unit)
                         start++;
                     start = Math.Max(start, 0);
@@ -502,7 +733,7 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = A.DiagOffset + i + 1;
+                    var end = i + 1;
                     if (aDiag is DiagType.Unit)
                         end--;
                     end = Math.Min(end, n);
@@ -517,10 +748,13 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// B -= Trans?(A)
+    /// Performs an element-wise matrix subtraction.<br />
+    /// <paramref name="B"/> := <paramref name="B"/> - 
+    /// Trans?(Uplo?(<paramref name="A"/>)).
     /// </summary>
+    /// <param name="A">Input matrix A.</param>
+    /// <param name="B">Input/output matrix B.</param>
     public static void Sub(in matrix A, in matrix B)
-        => Sub(DiagType.NonUnit,
-            UpLo.Dense, TransType.NoTrans,
-            A, B);
+        => Sub(DiagType.NonUnit, UpLo.Dense,
+            TransType.NoTrans, A, B);
 }

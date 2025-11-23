@@ -528,90 +528,84 @@ public static partial class BlasProvider
 				yHead += alpha * rho;
 			}
 			else if (aColStride == 1 && cols == DotxF_Kernel_RowMajor_Vector256_PerferredCount)
-				DotxF_Kernel_RowMajor_Vector256_Perferred_4p8(rows, alpha, ref aHead, aRowStride, ref xHead, xStride, beta, ref yHead, yStride);
+                DotxF_Kernel_RowMajor_Vector256_Perferred_4p4(rows, alpha, ref aHead, aRowStride, ref xHead, xStride, beta, ref yHead, yStride);
 			else if (aRowStride == 1 && cols == DotxF_Kernel_ColMajor_Vector256_PerferredCount)
 				DotxF_Kernel_ColMajor_Vector256_Perferred_4p6(rows, alpha, ref aHead, aColStride, ref xHead, xStride, beta, ref yHead, yStride);
 			else
 				DotxF_Kernel(rows, cols, alpha, ref aHead, aRowStride, aColStride, ref xHead, xStride, beta, ref yHead, yStride);
 		}
 
-		public const int DotxF_Kernel_RowMajor_Vector256_PerferredCount = 8;
+		public const int DotxF_Kernel_RowMajor_Vector256_PerferredCount = 4;
 
-		public static void DotxF_Kernel_RowMajor_Vector256_Perferred_4p8(int rows, scalar alpha, ref scalar aHead, int aRowStride, ref scalar xHead, int xStride, scalar beta, ref scalar yHead, int yStride)
-		{
-			int iterSize = 4;
-			Span<scalar> yBuffer = stackalloc scalar[(int)DotxF_Kernel_RowMajor_Vector256_PerferredCount];
-			ref var yBufferHead = ref MemoryMarshal.GetReference(yBuffer);
-			Vector256<scalar> yVec0 = Vector256.LoadUnsafe(ref yBufferHead);
-			Vector256<scalar> yVec1 = Vector256.LoadUnsafe(ref yBufferHead, 4);
-
-			ref var aHead1 = ref Unsafe.Add(ref aHead, 4);
-			int i = 0;
-			for (; i <= rows - iterSize; i += iterSize)
+		public static void DotxF_Kernel_RowMajor_Vector256_Perferred_4p4(int rows, scalar alpha, ref scalar aHead, int aRowStride, ref scalar xHead, int xStride, scalar beta, ref scalar yHead, int yStride)
+        {
+            using var xBuffer = new BufferDVectorSpan(ref xHead, rows, xStride, alpha);
+            xHead = ref xBuffer.bufferHead;
+            xStride = 1;
+            Span<double> yBuffer = stackalloc double[DotxF_Kernel_RowMajor_Vector256_PerferredCount];
+			ref double aRef0 = ref aHead;
+			ref double aRef1 = ref Unsafe.Add(ref aHead, aRowStride);
+            ref double aRef2 = ref Unsafe.Add(ref aHead, 2 * aRowStride);
+            ref double aRef3 = ref Unsafe.Add(ref aHead, 3 * aRowStride);
+            int i = 0;
+            if (rows >= Vector<double>.Count * 4)
 			{
-				scalar xScalar0 = xHead * alpha;
-				Vector256<scalar> xVec0 = Vector256.Create(xScalar0);
-				Vector256<scalar> aVec00 = Vector256.LoadUnsafe(ref aHead);
-				Vector256<scalar> aVec10 = Vector256.LoadUnsafe(ref aHead1);
-				xHead = ref Unsafe.Add(ref xHead, xStride);
-				aHead = ref Unsafe.Add(ref aHead, aRowStride);
-				aHead1 = ref Unsafe.Add(ref aHead1, aRowStride);
-				yVec0 = Fma.MultiplyAdd(aVec00, xVec0, yVec0);
-				yVec1 = Fma.MultiplyAdd(aVec10, xVec0, yVec1);
+                Vector<double> yVec0 = Vector<double>.Zero;
+                Vector<double> yVec1 = Vector<double>.Zero;
+                Vector<double> yVec2 = Vector<double>.Zero;
+                Vector<double> yVec3 = Vector<double>.Zero;
+				var fma = new MultiplyAddOperator<double>();
+                for (; i <= rows - Vector<double>.Count;
+					i += Vector<double>.Count)
+                {
+                    Vector<double> aVec0 = Vector.LoadUnsafe(ref aRef0);
+                    Vector<double> aVec1 = Vector.LoadUnsafe(ref aRef1);
+                    Vector<double> aVec2 = Vector.LoadUnsafe(ref aRef2);
+                    Vector<double> aVec3 = Vector.LoadUnsafe(ref aRef3);
+                    Vector<double> xVec = Vector.LoadUnsafe(ref xHead);
 
-				scalar xScalar1 = xHead * alpha;
-				Vector256<scalar> xVec1 = Vector256.Create(xScalar1);
-				Vector256<scalar> aVec01 = Vector256.LoadUnsafe(ref aHead);
-				Vector256<scalar> aVec11 = Vector256.LoadUnsafe(ref aHead1);
-				xHead = ref Unsafe.Add(ref xHead, xStride);
-				aHead = ref Unsafe.Add(ref aHead, aRowStride);
-				aHead1 = ref Unsafe.Add(ref aHead1, aRowStride);
-				yVec0 = Fma.MultiplyAdd(aVec01, xVec1, yVec0);
-				yVec1 = Fma.MultiplyAdd(aVec11, xVec1, yVec1);
+                    yVec0 = fma.Invoke(in aVec0, in xVec, in yVec0);
+                    yVec1 = fma.Invoke(in aVec1, in xVec, in yVec1);
+                    yVec2 = fma.Invoke(in aVec2, in xVec, in yVec2);
+                    yVec3 = fma.Invoke(in aVec3, in xVec, in yVec3);
 
-				scalar xScalar2 = xHead * alpha;
-				Vector256<scalar> xVec2 = Vector256.Create(xScalar2);
-				Vector256<scalar> aVec02 = Vector256.LoadUnsafe(ref aHead);
-				Vector256<scalar> aVec12 = Vector256.LoadUnsafe(ref aHead1);
-				xHead = ref Unsafe.Add(ref xHead, xStride);
-				aHead = ref Unsafe.Add(ref aHead, aRowStride);
-				aHead1 = ref Unsafe.Add(ref aHead1, aRowStride);
-				yVec0 = Fma.MultiplyAdd(aVec02, xVec2, yVec0);
-				yVec1 = Fma.MultiplyAdd(aVec12, xVec2, yVec1);
-
-				scalar xScalar3 = xHead * alpha;
-				Vector256<scalar> xVec3 = Vector256.Create(xScalar3);
-				Vector256<scalar> aVec03 = Vector256.LoadUnsafe(ref aHead);
-				Vector256<scalar> aVec13 = Vector256.LoadUnsafe(ref aHead1);
-				xHead = ref Unsafe.Add(ref xHead, xStride);
-				aHead = ref Unsafe.Add(ref aHead, aRowStride);
-				aHead1 = ref Unsafe.Add(ref aHead1, aRowStride);
-				yVec0 = Fma.MultiplyAdd(aVec03, xVec3, yVec0);
-				yVec1 = Fma.MultiplyAdd(aVec13, xVec3, yVec1);
-			}
-			for (; i < rows; i++)
+                    aRef0 = ref Unsafe.Add(ref aRef0, Vector<double>.Count);
+                    aRef1 = ref Unsafe.Add(ref aRef1, Vector<double>.Count);
+                    aRef2 = ref Unsafe.Add(ref aRef2, Vector<double>.Count);
+                    aRef3 = ref Unsafe.Add(ref aRef3, Vector<double>.Count);
+					xHead = ref Unsafe.Add(ref xHead, Vector<double>.Count);
+                }
+				yBuffer[0] = Vector.Sum(yVec0);
+                yBuffer[1] = Vector.Sum(yVec1);
+                yBuffer[2] = Vector.Sum(yVec2);
+                yBuffer[3] = Vector.Sum(yVec3);
+            }
+			else
 			{
-				scalar xScalar = xHead * alpha;
-				Vector256<scalar> xVec = Vector256.Create(xScalar);
-				Vector256<scalar> aVec0 = Vector256.LoadUnsafe(ref aHead);
-				Vector256<scalar> aVec1 = Vector256.LoadUnsafe(ref aHead1);
-				xHead = ref Unsafe.Add(ref xHead, xStride);
-				aHead = ref Unsafe.Add(ref aHead, aRowStride);
-				aHead1 = ref Unsafe.Add(ref aHead1, aRowStride);
-				yVec0 = Fma.MultiplyAdd(aVec0, xVec, yVec0);
-				yVec1 = Fma.MultiplyAdd(aVec1, xVec, yVec1);
+				yBuffer.Clear();
 			}
+            for(; i < rows; i++)
+            {
+                yBuffer[0] += aRef0 * xHead;
+                yBuffer[1] += aRef1 * xHead;
+                yBuffer[2] += aRef2 * xHead;
+                yBuffer[3] += aRef3 * xHead;
 
-			yVec0.StoreUnsafe(ref yBufferHead);
-			yVec1.StoreUnsafe(ref yBufferHead, 4);
-			for (i = 0; i < DotxF_Kernel_RowMajor_Vector256_PerferredCount; i++)
-			{
-				yHead *= beta;
-				yHead += yBufferHead;
-				yHead = ref Unsafe.Add(ref yHead, yStride);
-				yBufferHead = ref Unsafe.Add(ref yBufferHead, 1);
-			}
-		}
+                aRef0 = ref Unsafe.Add(ref aRef0, 1);
+                aRef1 = ref Unsafe.Add(ref aRef1, 1);
+                aRef2 = ref Unsafe.Add(ref aRef2, 1);
+                aRef3 = ref Unsafe.Add(ref aRef3, 1);
+                xHead = ref Unsafe.Add(ref xHead, 1);
+            }
+
+			yHead = yHead * beta + yBuffer[0];
+			yHead = ref Unsafe.Add(ref yHead, yStride);
+            yHead = yHead * beta + yBuffer[1];
+            yHead = ref Unsafe.Add(ref yHead, yStride);
+            yHead = yHead * beta + yBuffer[2];
+            yHead = ref Unsafe.Add(ref yHead, yStride);
+            yHead = yHead * beta + yBuffer[3];
+        }
 
 		public const int DotxF_Kernel_ColMajor_Vector256_PerferredCount = 6;
 

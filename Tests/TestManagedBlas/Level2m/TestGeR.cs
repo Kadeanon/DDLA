@@ -29,27 +29,23 @@ public class TestGeR
         CheckExpectedResults(mat);
     }
 
-    public static void CheckExpectedResults(MatrixView a)
+    public static void CheckExpectedResults(MatrixView A)
     {
         double alpha = 1.3;
-        int rows = a.Rows, cols = a.Cols;
+        int rows = A.Rows, cols = A.Cols;
         var x = CreateVectorRandom(rows);
         var y = CreateVectorRandom(cols);
-        var result = CopyMatrix(a);
-        for (int i = 0; i < a.Rows; i++)
+        var expected = CopyMatrix(A);
+        BlasProvider.GeR(alpha, x, y, A);
+        for (int i = 0; i < A.Rows; i++)
         {
-            for (int j = 0; j < a.Cols; j++)
+            for (int j = 0; j < A.Cols; j++)
             {
-                result[i, j] += alpha * x[i] * y[j];
+                expected[i, j] += alpha * x[i] * y[j];
             }
         }
-        BlasProvider.GeR(alpha, x, y, a);
-        for (int i = 0; i < a.Rows; i++)
-        {
-            for (int j = 0; j < a.Cols; j++)
-            {
-                Assert.AreEqual(result[i, j], a[i, j], 1e-10, $"Value ({i}, {j}) mismatch");
-            }
-        }
+        var diff = A - expected;
+        double err = BlasProvider.NrmF(diff) / Math.Sqrt(A.Size);
+        Assert.AreEqual(0, err, 1e-15, $"Result A mismatch");
     }
 }

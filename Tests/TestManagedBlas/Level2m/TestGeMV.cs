@@ -29,27 +29,20 @@ public class TestGeMV
         CheckExpectedResults(mat);
     }
 
-    public static void CheckExpectedResults(MatrixView a)
+    public static void CheckExpectedResults(MatrixView A)
     {
         double alpha = 2.0;
         double beta = 1.2;
-        var aTrue = a.Clone();
-        int rows = aTrue.Rows, cols = aTrue.Cols;
+        int rows = A.Rows, cols = A.Cols;
         var x = CreateVectorRandom(cols);
         var y = CreateVectorRandom(rows);
-        var result = CopyVector(y);
+        var expected = CopyVector(y).Scaled(beta);
         for (int i = 0; i < rows; i++)
         {
-            result[i] *= beta;
-            for (int j = 0; j < cols; j++)
-            {
-                result[i] += alpha * aTrue[i, j] * x[j];
-            }
+            expected[i] += alpha * A[i, ..] * x;
         }
-        BlasProvider.GeMV(alpha, a, x, beta, y);
-        for (int i = 0; i < rows; i++)
-        {
-            Assert.AreEqual(result[i], y[i], 1e-10, $"Row {i} mismatch");
-        }
+        BlasProvider.GeMV(alpha, A, x, beta, y);
+        double err = BlasProvider.RMS(y - expected);
+        Assert.AreEqual(0, err, 1e-12, $"Result y mismatch");
     }
 }

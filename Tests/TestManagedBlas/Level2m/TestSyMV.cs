@@ -58,23 +58,12 @@ public class TestSymv
         int length = a.Cols;
         var x = CreateVectorRandom(length);
         var y = CreateVectorRandom(length);
-        bool upper = uplo == UpLo.Upper;
-        for (int i = 0; i < a.Rows; i++)
-        {
-            foreach (var j in upper ?
-                Enumerable.Range(0, i) :
-                Enumerable.Range(i + 1, length - i - 1))
-            {
-                a[i, j] = a[j, i];
-            }
-        }
-        var result = CopyVector(y);
-        BlasProvider.GeMV(alpha, a, x, beta, result);
+        var expected = CopyVector(y);
         BlasProvider.SyMV(uplo, alpha, a, x, beta, y);
-        for (int i = 0; i < a.Rows; i++)
-        {
-            Assert.AreEqual(result[i], y[i], 1e-10, $"Row {i} mismatch");
-        }
+        a.MakeSy(uplo);
+        BlasProvider.GeMV(alpha, a, x, beta, expected);
+        double err = BlasProvider.RMS(y - expected);
+        Assert.AreEqual(0, err, 1e-12, $"Result y mismatch");
     }
 
 }

@@ -33,8 +33,6 @@ public class Matrix : IEnumerable<double>
 
     public int ColStride { get; internal set; }
 
-    public int DiagOffset { get; }
-
     public int MinDim => Math.Min(Rows, Cols);
 
     public int MaxDim => Math.Max(Rows, Cols);
@@ -48,7 +46,7 @@ public class Matrix : IEnumerable<double>
     public int Size => Rows * Cols;
 
     public MatrixView View => new(Data, Offset,
-        Rows, Cols, RowStride, ColStride, DiagOffset);
+        Rows, Cols, RowStride, ColStride);
     #endregion Properties
 
     #region Constructors
@@ -62,7 +60,6 @@ public class Matrix : IEnumerable<double>
         Cols = 1;
         RowStride = 1;
         ColStride = 1;
-        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -87,7 +84,6 @@ public class Matrix : IEnumerable<double>
             RowStride = cols;
             ColStride = 1;
         }
-        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -118,7 +114,7 @@ public class Matrix : IEnumerable<double>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Matrix(double[] array, int offset, int rows, int cols,
-        int rowStride, int colStride, int diagOffset = 0)
+        int rowStride, int colStride)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(offset, nameof(offset));
@@ -132,7 +128,6 @@ public class Matrix : IEnumerable<double>
         Cols = cols;
         RowStride = rowStride;
         ColStride = colStride;
-        DiagOffset = diagOffset;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -144,7 +139,6 @@ public class Matrix : IEnumerable<double>
         Cols = mat.Cols;
         RowStride = mat.RowStride;
         ColStride = mat.ColStride;
-        DiagOffset = mat.DiagOffset;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

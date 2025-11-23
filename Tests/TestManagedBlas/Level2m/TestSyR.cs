@@ -62,30 +62,13 @@ public class TestSyR
         double alpha = 2.0;
         var length = a.Rows;
         var x = CreateVectorRandom(length);
-        bool upper = uplo == UpLo.Upper;
-        var y = CopyMatrix(a);
+        var expected = a.EmptyLike();
+        expected.Rank1(alpha, x, x);
+        expected.MakeTr(uplo);
+        expected.AddedBy(a);
         BlasProvider.SyR(uplo, alpha, x, a);
-        if (upper)
-        {
-            for (int i = 0; i < a.Rows; i++)
-            {
-                for (int j = i; j < a.Cols; j++)
-                {
-                    double expected = y[i, j] + alpha * x[i] * x[j];
-                    Assert.AreEqual(expected, a[i, j], 1e-10, $"Matrix {i},{j} mismatch");
-                }
-            }
-        }
-        else
-        {
-            for (int i = 0; i < a.Rows; i++)
-            {
-                for (int j = 0; j <= i; j++)
-                {
-                    double expected = y[i, j] + alpha * x[i] * x[j];
-                    Assert.AreEqual(expected, a[i, j], 1e-10, $"Matrix {i},{j} mismatch");
-                }
-            }
-        }
+        var diff = a - expected;
+        double err = BlasProvider.NrmF(diff) / length;
+        Assert.AreEqual(0, err, 1e-12, $"Result y mismatch");
     }
 }

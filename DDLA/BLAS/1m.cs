@@ -15,7 +15,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Source.Add(A.DiagOffset, aDiag, aUplo, aTrans,
+        Source.Add(0, aDiag, aUplo, aTrans,
             m, n,
             ref A.GetHeadRef(), A.RowStride, A.ColStride, 
             ref B.GetHeadRef(), B.RowStride, B.ColStride);
@@ -38,7 +38,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Source.Axpy(A.DiagOffset, aDiag, aUplo, aTrans,
+        Source.Axpy(0, aDiag, aUplo, aTrans,
             m, n, 
             alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride, 
@@ -63,7 +63,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Source.Copy(A.DiagOffset, aDiag, aUplo, aTrans,
+        Source.Copy(0, aDiag, aUplo, aTrans,
             m, n, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride, 
             ref B.GetHeadRef(), B.RowStride, B.ColStride);
@@ -85,7 +85,7 @@ public static partial class BlasProvider
         var (m, n) = CheckUploMatLength(A, aUplo);
         ArgumentOutOfRangeException.ThrowIfEqual(alpha, 0, nameof(alpha));
         if (m == 0 || n == 0) return;
-        Source.Scal(ConjType.NoConj, A.DiagOffset, aUplo,
+        Source.Scal(ConjType.NoConj, 0, aUplo,
             m, n,
             1 / alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
@@ -105,7 +105,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckUploMatLength(A, aUplo);
         if (m == 0 || n == 0) return;
-        Source.Scal(ConjType.NoConj, A.DiagOffset, aUplo,
+        Source.Scal(ConjType.NoConj, 0, aUplo,
             m, n, 
             alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
@@ -127,7 +127,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Source.Scal2(A.DiagOffset, aDiag, aUplo, aTrans,
+        Source.Scal2(0, aDiag, aUplo, aTrans,
             m, n, 
             alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -150,7 +150,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckUploMatLength(A, aUplo);
         if (m == 0 || n == 0) return;
-        Source.Set(ConjType.NoConj, A.DiagOffset, aDiag, aUplo,
+        Source.Set(ConjType.NoConj, 0, aDiag, aUplo,
             m, n, 
             alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
@@ -173,7 +173,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(A, aTrans, B);
         if (m == 0 || n == 0) return;
-        Source.Sub(A.DiagOffset, aDiag, aUplo, aTrans,
+        Source.Sub(0, aDiag, aUplo, aTrans,
             m, n,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
             ref B.GetHeadRef(), B.RowStride, B.ColStride);

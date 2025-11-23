@@ -28,7 +28,6 @@ public readonly struct MatrixView : IEnumerable<double>
     public int Cols { get; }
     public int RowStride { get; }
     public int ColStride { get; }
-    public int DiagOffset { get; }
 
     public readonly int MinDim => Math.Min(Rows, Cols);
 
@@ -56,7 +55,6 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = 1;
         RowStride = 1;
         ColStride = 1;
-        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -81,7 +79,6 @@ public readonly struct MatrixView : IEnumerable<double>
             RowStride = cols;
             ColStride = 1;
         }
-        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -108,7 +105,6 @@ public readonly struct MatrixView : IEnumerable<double>
             RowStride = cols;
             ColStride = 1;
         }
-        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -126,7 +122,6 @@ public readonly struct MatrixView : IEnumerable<double>
         Cols = cols;
         RowStride = rowStride;
         ColStride = colStride;
-        DiagOffset = diagOffset;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -138,7 +133,6 @@ public readonly struct MatrixView : IEnumerable<double>
         RowStride = vector.Stride;
         Cols = 1;
         ColStride = Rows * vector.Stride;
-        DiagOffset = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -153,7 +147,6 @@ public readonly struct MatrixView : IEnumerable<double>
         RowStride = vector.Stride;
         Cols = cols;
         ColStride = rows * vector.Stride;
-        DiagOffset = 0;
     }
     #endregion Constructors
 
@@ -478,7 +471,7 @@ public readonly struct MatrixView : IEnumerable<double>
         }
     }
 
-    public MatrixView T => new(Data, Offset, Cols, Rows, ColStride, RowStride,-DiagOffset);
+    public MatrixView T => new(Data, Offset, Cols, Rows, ColStride, RowStride);
 
     internal readonly ref double AtUncheck(int row, int col)
         => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(Data),

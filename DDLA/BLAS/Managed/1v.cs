@@ -20,19 +20,19 @@ namespace DDLA.BLAS.Managed;
 public static partial class BlasProvider
 {
     /// <summary>
-    /// y += Conj?(x).
+    /// y := x + y
     /// </summary>
     public static void Add(in vector x, in vector y)
         => x.Combine<AddOperator<scalar>>(y);
 
     /// <summary>
-    /// y += alpha * Conj?(x).
+    /// y := alpha * x + y
     /// </summary>
     public static void Axpy(scalar alpha, in vector x, in vector y)
         => x.Combine<MultiplyAddOperator<scalar>, scalar>(alpha, y);
 
     /// <summary>
-    /// y = alpha * Conj?(x) + beta * Conj?(y).
+    /// y := alpha * x + beta * y.
     /// </summary>
     public static void Axpby(in scalar alpha, in vector x, scalar beta, in vector y)
     {
@@ -157,9 +157,15 @@ public static partial class BlasProvider
         }
     }
 
+    /// <summary>
+    /// y := x
+    /// </summary>
     public static void Copy(in vector x, in vector y)
         => x.Map<IdentityOperator<scalar>>(y, default);
 
+    /// <summary>
+    /// return x * y
+    /// </summary>
     public static scalar Dot(in vector x, in vector y)
         => ZipSum<MultiplyOperator<scalar>>(x, y);
 
@@ -269,6 +275,9 @@ public static partial class BlasProvider
         }
     }
 
+    /// <summary>
+    /// rho := alpha * x * y + beta * rho
+    /// </summary>
     public static void Dotx(scalar alpha, in vector x, in vector y, scalar beta, ref scalar rho)
     {
         int length = CheckLength(x, y);
@@ -277,9 +286,16 @@ public static partial class BlasProvider
         rho += alpha * Dot(x, y);
     }
 
+    /// <summary>
+    /// x := 1 / x
+    /// </summary>
     public static void Invert(in vector x)
         => x.Map<DoubleInvertOperator>(new());
 
+    /// <summary>
+    /// x := x / alpha
+    /// </summary>
+    /// <exception cref="ArgumentException">If alpha is 0 or ±Inf or NaN</exception>
     public static void InvScal(scalar alpha, in vector x)
     {
         if (alpha == 0.0 || alpha == -0.0 || !scalar.IsFinite(alpha))
@@ -291,6 +307,9 @@ public static partial class BlasProvider
             x.Map<MultiplyOperator<scalar>, scalar>(1 / alpha);
     }
 
+    /// <summary>
+    /// x := alpha * x
+    /// </summary>
     public static void Scal(scalar alpha, in vector x)
     {
         if (alpha == 0.0 || alpha == -0.0)
@@ -299,6 +318,9 @@ public static partial class BlasProvider
             x.Map<MultiplyOperator<scalar>, scalar>(alpha);
     }
 
+    /// <summary>
+    /// y := alpha * x
+    /// </summary>
     public static void Scal2(scalar alpha, in vector x, in vector y)
     {
         if (alpha == 0.0 || alpha == -0.0)
@@ -309,18 +331,33 @@ public static partial class BlasProvider
             Copy(x, y);
     }
 
+    /// <summary>
+    /// x := Pow(x, alpha)
+    /// </summary>
     public static void Pow(scalar alpha, in vector x)
         => x.Map<PowOperator<scalar>, scalar>(alpha);
 
+    /// <summary>
+    /// x := Sqrt(x)
+    /// </summary>
     public static void Sqrt(in vector x)
         => x.Map<SqrtOperator<scalar>>();
 
+    /// <summary>
+    /// x := alpha
+    /// </summary>
     public static void Set(scalar alpha, in vector x)
         => x.Apply<IdentityOperator<scalar>, scalar>(alpha);
 
+    /// <summary>
+    /// y := y - x
+    /// </summary>
     public static void Sub(in vector x, in vector y)
         => x.Combine<ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>>(y);
 
+    /// <summary>
+    /// (x, y) = (y, x)
+    /// </summary>
     public static void Swap(in vector x, in vector y)
     {
         var indice = UFunc.CheckIndice(x, y);
@@ -416,12 +453,23 @@ public static partial class BlasProvider
         }
     }
 
+    /// <summary>
+    /// x := alpha + x
+    /// </summary>
     public static void Shift(scalar alpha, in vector x)
         => x.Map<AddOperator<scalar>, scalar>(alpha);
 
+    /// <summary>
+    /// y := x + beta * y
+    /// </summary>
     public static void Xpby(in vector x, scalar beta, in vector y)
         => x.Combine<DoubleXpbyOperator, scalar>(beta, y);
 
+    /// <summary>
+    /// return Sqrt(Mean(Pow(x, 2)))
+    /// </summary>
+    /// <param name="x"></param>
+    /// <returns></returns>
     public static scalar RMS(in vector x)
         => x.Length == 0 ? 0.0 :
         Math.Sqrt(Sum<SquareOperator<scalar>>(x) / x.Length);
@@ -440,7 +488,7 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// (x, y) = (c * x + s * y, - s * x + c * y)
+    /// (x, y) = (giv.c * x + giv.s * y, - giv.s * x + giv.c * y)
     /// </summary>
     public static void Rot(in vector x, in vector y, Givens giv)
     {
@@ -530,7 +578,8 @@ public static partial class BlasProvider
     }
 
     /// <summary>
-    /// (x, y) = (c * x + s * y, - s * x + c * y)
+    /// (x, y) = (giv.c * x + giv.s * y, - giv.s * x + giv.c * y), then
+    /// (y, z) = (giv.c * y + giv.s * z, - giv.s * y + giv.c * z)
     /// </summary>
     public static void Rot2(in vector x, in vector y, in vector z, Givens giv1, Givens giv2)
     {

@@ -90,7 +90,7 @@ public static partial class BlasProvider
             (m, n) = (n, m);
             (AEffective, BEffective) = (BEffective.T, AEffective.T);
         }
-        var diagOrig = CEffective.DiagOffset;
+        var diagOrig = 0;
 
         var MCEffective = Math.Min(MC, m.Align(MR));
         var NCEffective = Math.Min(NC, n.Align(NR));

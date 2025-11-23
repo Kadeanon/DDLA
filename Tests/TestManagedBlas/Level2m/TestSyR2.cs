@@ -57,36 +57,20 @@ public class TestSyr2
         CheckExpectedResults(UpLo.Lower, mat);
     }
 
-    public static void CheckExpectedResults(UpLo uplo, MatrixView a)
+    public static void CheckExpectedResults(UpLo uplo, MatrixView A)
     {
         double alpha = 2.0;
-        int cols = a.Cols, rows = a.Rows;
+        int cols = A.Cols, rows = A.Rows;
         var vecx = CreateVectorRandom(rows);
         var vecy = CreateVectorRandom(cols);
         bool upper = uplo == UpLo.Upper;
-        var result = CopyMatrix(a);
-        BlasProvider.SyR2(uplo, alpha, vecx, vecy, a);
-        BlasProvider.GeR(alpha, vecx, vecy, result);
-        BlasProvider.GeR(alpha, vecy, vecx, result);
-        if (upper)
-        {
-            for (int i = 0; i < a.Rows; i++)
-            {
-                for (int j = i; j < a.Cols; j++)
-                {
-                    Assert.AreEqual(result[i, j], a[i, j], 1e-10, $"Matrix {i},{j} mismatch");
-                }
-            }
-        }
-        else
-        {
-            for (int i = 0; i < a.Rows; i++)
-            {
-                for (int j = 0; j <= i; j++)
-                {
-                    Assert.AreEqual(result[i, j], a[i, j], 1e-10, $"Matrix {i},{j} mismatch");
-                }
-            }
-        }
+        var expected = CopyMatrix(A);
+        BlasProvider.SyR2(uplo, alpha, vecx, vecy, A);
+        BlasProvider.GeR(alpha, vecx, vecy, expected);
+        BlasProvider.GeR(alpha, vecy, vecx, expected);
+        var diff = A - expected;
+        diff.MakeTr(uplo);
+        double err = BlasProvider.NrmF(diff) / Math.Sqrt(A.Size);
+        Assert.AreEqual(0, err, 1e-14, $"Result A mismatch");
     }
 }
