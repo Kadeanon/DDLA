@@ -10,11 +10,10 @@ namespace DDLA.BLAS.Managed;
 
 public static partial class BlasProvider
 {
-
     private static void GeMMInner(int m, int n, int k,
     scalar alpha,
     matrix A, matrix B,
-    scalar beta, matrix C)
+    matrix C)
     {
 
         var kernel = new GEMMKernel();

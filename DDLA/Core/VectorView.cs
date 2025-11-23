@@ -463,7 +463,7 @@ public readonly struct VectorView
         return result;
     }
 
-    public VectorView Scaled(double scalar)
+    public VectorView ScaledBy(double scalar)
     {
         if (IsEmpty)
             return this;
@@ -471,7 +471,7 @@ public readonly struct VectorView
         return this;
     }
 
-    public VectorView InvScaled(double scalar)
+    public VectorView InvScaledBy(double scalar)
     {
         if (IsEmpty)
             return this;

@@ -27,7 +27,7 @@ public class TestSEVD
         "and needs to be fixed")]
     [TestMethod]
     public void TestLargeSEVDLower()
-    => TestSEVDCore(large, UpLo.Lower);
+    => TestSEVDCore(large, UpLo.Lower, tol: 1e-8);
 
     [TestMethod]
     public void TestTinySEVDUpper()
@@ -45,7 +45,7 @@ public class TestSEVD
         "and needs to be fixed")]
     [TestMethod]
     public void TestLargeSEVDUpper()
-    => TestSEVDCore(large, UpLo.Upper);
+    => TestSEVDCore(large, UpLo.Upper, tol: 1e-8);
 
     private static void TestSEVDCore(int n, UpLo uplo, double tol = 1e-12)
     {

@@ -22,12 +22,19 @@ public class FrancisQRSEVD(VectorView d,
 
     public MatrixView Q { get; set; } = Q;
 
+    private volatile int _parallelLevel = 0;
+
+
+    private volatile int _maxParallelLevel = Environment.ProcessorCount / 2;
+
+
     public void Kernel()
     {
         using var _ = PoolUtils.Borrow<Givens>(e.Length, out var rots);
+        _parallelLevel = 0;
         ImplicitQrTridiag(d, e, Q, rots);
         SortResults();
-        Console.WriteLine($"Average calculate a eigenValue use {TotalIter / d.Length} sweep.");
+        //Console.WriteLine($"Average calculate a eigenValue use {TotalIter / d.Length} sweep.");
     }
 
     void SortResults()
@@ -87,7 +94,7 @@ public class FrancisQRSEVD(VectorView d,
     }
 
     public void ImplicitQrTridiag(VectorView d,
-        VectorView e, MatrixView Q, Span<Givens> rots)
+        VectorView e, MatrixView Q, ArraySegment<Givens> rots)
     {
         int m;
         int start, end;
@@ -161,9 +168,6 @@ public class FrancisQRSEVD(VectorView d,
                 // 左边：start..m 右边：m..end
                 // 递归调用
                 var dStart = d.Offset;
-                Console.WriteLine(
-                    $"[DEBUG]Split: {dStart + start}..{dStart + m} " +
-                    $"and {dStart + m}..{dStart + end + 1}");
 
                 var d0 = d[start..(m + 1)];
                 var e0 = e[start..m];
@@ -175,14 +179,26 @@ public class FrancisQRSEVD(VectorView d,
                 var Q1 = Q[.., (m + 1)..(end + 1)];
                 var rot1 = rots[(m + 1)..end];
 
-                ImplicitQrTridiag(d0, e0, Q0, rot0);
-                ImplicitQrTridiag(d1, e1, Q1, rot1);
-
+                Console.WriteLine(
+                    $"[DEBUG]Split: {dStart + start}..{dStart + m} " +
+                    $"and {dStart + m}..{dStart + end + 1}");
+                if (Interlocked.Increment(ref _parallelLevel) <= _maxParallelLevel)
+                {
+                    var task = Task.Run(() => ImplicitQrTridiag(d1, e1, Q1, rot1));
+                    ImplicitQrTridiag(d0, e0, Q0, rot0);
+                    task.Wait();
+                }
+                else
+                {
+                    ImplicitQrTridiag(d0, e0, Q0, rot0);
+                    ImplicitQrTridiag(d1, e1, Q1, rot1);
+                }
+                _parallelLevel--;
+                break;
                 // 由于调用结束后左右两部分均已收敛，
                 // 因此当前对角化结束，直接返回
-                break;
             }
-            else
+            //else
             {
                 var len = end - start + 1;
 

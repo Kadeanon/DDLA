@@ -224,132 +224,18 @@ public static class Bidiagonaling
 
 }
 
-internal abstract class BidiagBase
-{
-    protected MatrixView Work { get; }
-    public abstract MatrixView U { get; }
-    public abstract MatrixView V { get; }
-    public VectorView Diag { get; }
-    public VectorView SubDiag { get; }
-    public abstract void Kernel();
-    public virtual Matrix GetBiMatrix()
-    {
-        var len = Work.Rows;
-        var wid = Work.Cols;
-        Matrix res = Matrix.Create(len, wid);
-        int i = 0;
-        for (; i < wid - 1; i++)
-        {
-            res[i, i] = Diag[i];
-            res[i, i + 1] = SubDiag[i];
-        }
-        res[i, i] = Diag[i];
-        return res;
-    }
-
-    public BidiagBase(MatrixView orig)
-    {
-        var len = orig.Rows;
-        var wid = orig.Cols;
-        if (len < wid)
-            throw new ArgumentException("Only support m >= n");
-        Work = orig.Clone(colMajor: true);
-        Diag = Vector.Create(wid);
-        SubDiag = Vector.Create(wid - 1);
-    }
-}
-
-internal class HHUnbBidiag : BidiagBase
-{
-    public HHUnbBidiag(MatrixView orig) : base(orig)
-    {
-        var len = orig.Rows;
-        var wid = orig.Cols;
-        U = Matrix.Eyes(len).Transpose();
-        V = Matrix.Eyes(wid).Transpose();
-        Buffer = Vector.Create(Math.Max(len, wid));
-    }
-
-    public VectorView Buffer { get; }
-
-    public override MatrixView U { get; }
-
-    public override MatrixView V { get; }
-
-    public override void Kernel()
-    {
-        for (int i = 0; i < Work.Cols; i++)
-        {
-            StepU(i);
-            if (i < Work.Cols - 1)
-                StepV(i);
-        }
-    }
-
-    public void StepU(int i)
-    {
-        var col = Work[i.., i];
-        var right = Work[i.., (i + 1)..];
-        var URight = U[.., i..];
-        BidHelper.BuildHH(col, out Diag[i], out var tau1);
-        ApplyRight(col, right, tau1);
-        ApplyUV(col, URight, tau1);
-    }
-
-    public void StepV(int i)
-    {
-        var row = Work[i, (i + 1)..];
-        var bottom = Work[(i + 1).., (i + 1)..];
-        var VRight = V[.., (i + 1)..];
-        BidHelper.BuildHH(row, out SubDiag[i], out var tau2);
-        ApplyBottom(row, bottom, tau2);
-        ApplyUV(row, VRight, tau2);
-    }
-
-    public void ApplyRight(VectorView col, MatrixView right, double tau)
-    {
-        var buffer = Buffer[..right.Cols];
-        // right -= col * (col^T * right) / tau
-        col.LeftMul(1 / tau, right, buffer);
-        right.Rank1(-1, col, buffer);
-    }
-
-    public void ApplyBottom(VectorView row, MatrixView bottom, double tau)
-    {
-        var buffer = Buffer[..bottom.Rows];
-        // bottom -= (bottom * row) * row^T / tau
-        bottom.Multify(1 / tau, row, buffer);
-        bottom.Rank1(-1, buffer, row);
-    }
-
-    public void ApplyUV(VectorView col, MatrixView UorV, double tau)
-    {
-        var buffer = Buffer[..UorV.Rows];
-        // bottom -= (bottom * col) * col^T / tau
-        UorV.Multify(1 / tau, col, buffer);
-        UorV.Rank1(-1, buffer, col);
-    }
-}
-
-internal class TwoStageBidiag : BidiagBase
+internal class TwoStageBidiag
 {
     public const int MaxBlockSize = 32;
+    protected MatrixView Work { get; }
 
-    public TwoStageBidiag(MatrixView orig) : base(orig)
-    {
-        var len = orig.Rows;
-        var wid = orig.Cols;
-        U = MatrixView.Eyes(len, colMajor: true);
-        V = MatrixView.Eyes(wid, colMajor: true);
-        TU = MatrixView.Create(TUBlockSize, wid, colMajor: true);
-        TV = MatrixView.Create(TUBlockSize, wid - TUBlockSize);
-        TU2 = MatrixView.Create(wid, wid);
-        TV2 = MatrixView.Create(wid, wid);
-    }
+    public MatrixView U { get; }
 
-    public override MatrixView U { get; }
+    public MatrixView V { get; }
 
-    public override MatrixView V { get; }
+    public VectorView Diag { get; }
+
+    public VectorView SubDiag { get; }
 
     public MatrixView TU { get; }
 
@@ -361,7 +247,24 @@ internal class TwoStageBidiag : BidiagBase
 
     public int TUBlockSize => Math.Min(MaxBlockSize, Work.Cols);
 
-    public override void Kernel()
+    public TwoStageBidiag(MatrixView orig)
+    {
+        var len = orig.Rows;
+        var wid = orig.Cols;
+        if (len < wid)
+            throw new ArgumentException("Only support m >= n");
+        Work = orig.Clone(colMajor: true);
+        Diag = Vector.Create(wid);
+        SubDiag = Vector.Create(wid - 1);
+        U = MatrixView.Eyes(len, colMajor: true);
+        V = MatrixView.Eyes(wid, colMajor: true);
+        TU = MatrixView.Create(TUBlockSize, wid, colMajor: true);
+        TV = MatrixView.Create(TUBlockSize, wid - TUBlockSize);
+        TU2 = MatrixView.Create(wid, wid);
+        TV2 = MatrixView.Create(wid, wid);
+    }
+
+    public void Kernel()
     {
         //DateTime start = DateTime.Now;
         Ge2Bd();
@@ -377,7 +280,7 @@ internal class TwoStageBidiag : BidiagBase
         Work[.., 1..].Diag.CopyTo(SubDiag);
     }
 
-    public override Matrix GetBiMatrix() => new(Work);
+    public Matrix GetBiMatrix() => new(Work);
 
     #region Ge2Bd
     public void Ge2Bd()
@@ -599,24 +502,6 @@ internal class BidHelper
         }
     }
 
-    internal static void QRBlock(MatrixView A, MatrixView T)
-    {
-        int iNext = 0;
-
-        for (var i = 0; i < A.MinDim; i = iNext)
-        {
-            iNext = Math.Min(i + MaxBlockSize, A.MinDim);
-
-            var T1 = T[.., i..iNext];
-            var T2 = T[.., iNext..];
-            var AB1 = A[i.., i..iNext];
-            var AB2 = A[i.., iNext..];
-
-            QRUnblock(AB1, T1);
-            ApplyQT(AB1, T1, T2, AB2);
-        }
-    }
-
     internal static void ApplyQT(MatrixView A, MatrixView T, MatrixView W, MatrixView Q)
     {
         int block = T.Rows;
@@ -629,34 +514,6 @@ internal class BidHelper
             ApplyQStep(A[aLeft.., aLeft..aRight],
                 T[aLeft..aRight, ..block], W[..block, ..Q.Cols],
                 Q[aLeft.., ..], trans: true);
-        }
-    }
-
-    internal static void ApplyQ(MatrixView A, MatrixView T, MatrixView W, MatrixView Q)
-    {
-        var aLeft = A.MinDim;
-        var aRight = A.MinDim;
-        var qLeft = A.MinDim;
-        var qRight = A.MinDim;
-
-        bool left = A.Cols % Math.Min(T.Rows, A.Cols) > 0;
-        var i = 0;
-        while (aLeft > 0)
-        {
-            var block = Math.Min(T.Rows, aLeft);
-            if (left)
-            {
-                block = A.Cols % block;
-                left = false;
-            }
-
-            aLeft -= block;
-
-            ApplyQStep(A[aLeft.., aLeft..aRight],
-                T[..block, aLeft..aRight], W[..block, ..],
-                Q[aLeft.., ..], false);
-
-            aRight -= block;
         }
     }
 
@@ -712,11 +569,12 @@ internal class BidHelper
         double alpha = Math.Sqrt(alphaSq);
         double rho = -Math.Sign(a11) * alpha;
         double miu = a11 - rho;
-        A21.Scaled(1 / miu);
+        A21.ScaledBy(1 / miu);
         tau = 1 + A21.SumSq();
         a11 = rho;
         tau /= 2;
     }
+    
     public static void BuildHH(VectorView x, out double sigma, out double tau)
     {
         if (x.Length == 0)

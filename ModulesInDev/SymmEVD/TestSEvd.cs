@@ -11,7 +11,10 @@ internal class TestSEvd
         for (int i = 0; i < 20; i++)
         {
             Console.WriteLine($"--- Iteration {i + 1} ---");
+            DateTime start = DateTime.Now;
             TestHHUTTridiag(len);
+            var span = DateTime.Now - start;
+            Console.WriteLine($"HHUTTridiag time out: {span}");
             Console.WriteLine();
         }
     }

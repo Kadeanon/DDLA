@@ -61,7 +61,7 @@ public class TestSyMM
         BlasProvider.SyMM(side, uplo, alpha, A, B, beta, C);
         BlisProvider.SyMM(side, uplo, alpha, A, B, beta, CExpected);
         var diff = CExpected - C;
-        var norm = diff.View.Nrm1();
+        var norm = diff.View.NrmF();
         Assert.AreEqual(0, norm, 2e-5, $"C mismatch in {m}x{n} state.");
     }
 }

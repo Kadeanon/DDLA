@@ -134,7 +134,7 @@ public class Cholesky
             var a21 = A[(i + 1).., i];
             var A22 = A[(i + 1).., (i + 1)..];
             Sqrt(ref alpha11);
-            a21.InvScaled(alpha11);
+            a21.InvScaledBy(alpha11);
             A22.Rank1(UpLo.Lower, -1, a21);
         }
     }
@@ -176,7 +176,7 @@ public class Cholesky
             //GeMV(-1, A02.T, a01, 1, a12);
             a01.LeftMul(-1.0, A02, 1.0, a12);
             // a12t /= sqrt(alpha11)
-            a12.InvScaled(alpha11);
+            a12.InvScaledBy(alpha11);
 
             //alpha11 -= a01.SumSq();
             //Sqrt(ref alpha11);

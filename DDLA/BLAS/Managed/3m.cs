@@ -35,7 +35,7 @@ public static partial class BlasProvider
         GeMMInner(m, n, k,
             alpha,
             AEffective, BEffective,
-            beta, C);
+            C);
     }
 
     public static void GeMM
@@ -184,7 +184,7 @@ public static partial class BlasProvider
         SyMMInner(m, n, k, alpha,
             aUplo, AEffective,
             bUplo, BEffective,
-            beta, C);
+            C);
     }
 
     public static void SyMM
@@ -273,6 +273,11 @@ public static partial class BlasProvider
         var bUplo = UpLo.Dense;
         var AEffective = A;
         var BEffective = B;
+        if(aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            AEffective = A.T;
+            aUplo = Transpose(aUplo);
+        }
         if (aSide is SideType.Right)
         {
             (AEffective, BEffective) = (B, A);
@@ -355,33 +360,6 @@ public static partial class BlasProvider
             beta, C);
     }
 
-    public static void TrMM3Source
-        (SideType aSide, UpLo aUplo,
-        TransType aTrans, DiagType aDiag,
-        TransType bTrans,
-        in scalar alpha,
-        in matrix A,
-        in matrix B,
-        in scalar beta,
-        in matrix C)
-    {
-        var (m, n) = GetLengths(C);
-        if (m == 0 || n == 0) return;
-        CheckLengthsAfterTrans(B, bTrans, m, n);
-        var aLength = CheckSymmMatLength(A, aUplo);
-        var aExpected = aSide == SideType.Left ? m : n;
-        if (aLength != aExpected)
-            throw new ArgumentException("Dimensions of matrixs A must be match!");
-
-        Source.TrMM3(aSide, aUplo, aTrans, aDiag, bTrans,
-            m, n,
-            in alpha,
-            ref A.GetHeadRef(), A.RowStride, A.ColStride,
-            ref B.GetHeadRef(), B.RowStride, B.ColStride,
-            in beta,
-            ref C.GetHeadRef(), C.RowStride, C.ColStride);
-    }
-
     public static void TrMM3
         (SideType aSide, UpLo aUplo, DiagType aDiag,
         in scalar alpha,
@@ -436,6 +414,11 @@ public static partial class BlasProvider
         var bUplo = UpLo.Dense;
         var AEffective = A;
         var BEffective = B;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            AEffective = A.T;
+            aUplo = Transpose(aUplo);
+        }
         if (aSide is SideType.Right)
         {
             (AEffective, BEffective) = (B, A);

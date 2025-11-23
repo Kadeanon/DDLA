@@ -49,7 +49,7 @@ public static class HouseHolder
         double miu = chi - rho;
         chi = rho;
 
-        xLast.InvScaled(miu);
+        xLast.InvScaledBy(miu);
         double scaledLenLast = lenLast / Math.Abs(miu);
 
         tau = (1 + scaledLenLast * scaledLenLast) / 2;

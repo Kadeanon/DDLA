@@ -198,7 +198,7 @@ public static class Tridiagonaling
 
                 alphA11 = 1 - 1 / tau11;
 
-                a21.InvScaled(-tau11);
+                a21.InvScaledBy(-tau11);
             }
         }
     }
@@ -225,7 +225,7 @@ public static class Tridiagonaling
         sigma = double.CopySign(lenx, chi);
         double invScale = 1 / (chi - sigma);
         chi = 1;
-        xLast.Scaled(invScale);
+        xLast.ScaledBy(invScale);
         lenLast *= invScale;
         tau = (1 + lenLast * lenLast) / 2;
     }

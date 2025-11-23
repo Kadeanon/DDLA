@@ -22,8 +22,8 @@ namespace DDLA.Core;
 public readonly struct MatrixView : IEnumerable<double>
 {
     #region Properties
-    internal double[] Data { get; }
-    internal int Offset { get; }
+    public double[] Data { get; }
+    public int Offset { get; }
     public int Rows { get; }
     public int Cols { get; }
     public int RowStride { get; }

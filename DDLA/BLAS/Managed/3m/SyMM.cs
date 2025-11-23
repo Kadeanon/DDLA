@@ -13,7 +13,7 @@ public static partial class BlasProvider
     private static void SyMMInner(int m, int n, int k, scalar alpha,
         UpLo aUplo, matrix A,
         UpLo bUplo, matrix B,
-        scalar beta, matrix C)
+        matrix C)
     {
         var kernel = new GEMMKernel();
         var MC = kernel.mc;

@@ -22,7 +22,6 @@ public static partial class BlasProvider
 {
     public interface IPack: IActionEX
     {
-
     }
 
     public static partial class Packing 
@@ -41,11 +40,14 @@ public static partial class BlasProvider
 
             public int RowsAligned { get; }
 
-            public GEPack(matrix src, ArraySegment<double> buffer, int block, bool packB = false)
+            public int ParallelDegree { get; }
+
+            public GEPack(matrix src, ArraySegment<double> buffer, int block, int parallelDegree, bool packB = false)
             {
                 Src = packB ? src.T : src;
                 Buffer = buffer;
                 BlockSize = block;
+                ParallelDegree = parallelDegree;
 
                 RowsAligned = Rows.Align(BlockSize);
                 Debug.Assert(buffer.Count >= RowsAligned * Cols);
@@ -54,7 +56,7 @@ public static partial class BlasProvider
             public void Pack()
             {
                 ParallelHelperEX.For(0, RowsAligned / BlockSize, this, 
-                    4, Environment.ProcessorCount / 2);
+                    4, ParallelDegree);
             }
 
             public void Invoke(int i)
@@ -87,16 +89,31 @@ public static partial class BlasProvider
     }
 
     public static void GEMMPack(matrix src, int iStart, int iLength,
-        int jStart, int jLength, ArraySegment<double> buffer, int block, bool packB = false)
+        int jStart, int jLength, ArraySegment<double> buffer, int block, 
+        int parallelDegree = -1, bool packB = false)
     {
+        if(parallelDegree < 0)
+            parallelDegree = Environment.ProcessorCount / 2;
+        else if(parallelDegree == 0)
+            parallelDegree = 1;
+        else if(parallelDegree > Environment.ProcessorCount)
+            parallelDegree = Environment.ProcessorCount;
+
         var sub = src.SliceSubUncheck(iStart, iLength, jStart, jLength);
-        var pack = new Packing.GEPack(sub, buffer, block, packB);
+        var pack = new Packing.GEPack(sub, buffer, block, parallelDegree, packB);
         pack.Pack();
     }
 
-    public static void GEMMPack(matrix src, ArraySegment<double> buffer, int block, bool packB = false)
+    public static void GEMMPack(matrix src, ArraySegment<double> buffer, int block, 
+        int parallelDegree = -1, bool packB = false)
     {
-        var pack = new Packing.GEPack(src, buffer, block, packB);
+        if (parallelDegree < 0)
+            parallelDegree = Environment.ProcessorCount / 2;
+        else if (parallelDegree == 0)
+            parallelDegree = 1;
+        else if (parallelDegree > Environment.ProcessorCount)
+            parallelDegree = Environment.ProcessorCount;
+        var pack = new Packing.GEPack(src, buffer, block, parallelDegree, packB);
         pack.Pack();
     }
 
@@ -122,10 +139,10 @@ public static partial class BlasProvider
 
             public int Segments { get; }
 
-            public MArray BufferTensor { get; }
+            public int ParallelDegree { get; }
 
             public TRPack(DiagType unit, UpLo upLo, int diagOffset, in matrix src,
-                ArraySegment<double> buffer, int mr, bool packB = false)
+                ArraySegment<double> buffer, int block, int parallelDegree, bool packB = false)
             {
                 if (packB)
                 {
@@ -142,32 +159,32 @@ public static partial class BlasProvider
 
                 DiagUnit = unit is DiagType.Unit;
                 Buffer = buffer;
-                BlockSize = mr;
+                BlockSize = block;
                 Segments = (MC + BlockSize - 1) / BlockSize;
+                ParallelDegree = parallelDegree;
                 Debug.Assert(buffer.Count >= Segments * BlockSize * KC);
-                BufferTensor = new(buffer.Array, buffer.Offset,
-                    [Segments, KC, BlockSize]);
             }
 
             public void Pack()
             {
                 ParallelHelperEX.For(0, Segments, this,
-                    4, Environment.ProcessorCount / 2);
+                    4, ParallelDegree);
             }
 
             public void Invoke(int index)
             {
                 var length = KC * BlockSize;
-                var dst = Buffer.AsSpan(index * length, length);
                 var rowOffset = index * BlockSize;
                 var actualMR = Math.Min(Src.Rows - rowOffset, BlockSize);
                 var upper = UpLo is UpLo.Upper;
+                ref var slot = ref Buffer.Array![Buffer.Offset + index * length];
                 for (int col = 0; col < KC; col++)
                 {
                     int row = 0;
                     for (; row < BlockSize; row++)
                     {
-                        BufferTensor[index, col, row] = From(index, row, col);
+                        slot = From(index, row, col);
+                        slot = ref Unsafe.Add(ref slot, 1);
                     }
                 }
             }
@@ -204,36 +221,50 @@ public static partial class BlasProvider
 
     public static void TRMMPackA(DiagType unit, UpLo upLo, int diagOffset, matrix src,
         int iStart, int iLength, int jStart, int jLength,
-        ArraySegment<double> buffer, int block)
+        ArraySegment<double> buffer, int block, int parallelDegree = -1)
     {
+        if (parallelDegree < 0)
+            parallelDegree = Environment.ProcessorCount / 2;
+        else if (parallelDegree == 0)
+            parallelDegree = 1;
+        else if (parallelDegree > Environment.ProcessorCount)
+            parallelDegree = Environment.ProcessorCount;
+
         var sub = src.SliceSubUncheck(iStart, iLength, jStart, jLength);
         if (upLo is UpLo.Dense)
         {
-            var pack = new Packing.GEPack(sub, buffer, block, false);
+            var pack = new Packing.GEPack(sub, buffer, block, parallelDegree, false);
             pack.Pack();
         }
         else
         {
             var pack = new Packing.TRPack(unit, upLo, diagOffset, sub,
-                buffer, block, false);
+                buffer, block, parallelDegree, false);
             pack.Pack();
         }
     }
 
     public static void TRMMPackB(DiagType unit, UpLo upLo, int diagOffset, matrix src,
         int iStart, int iLength, int jStart, int jLength,
-        ArraySegment<double> buffer, int block)
+        ArraySegment<double> buffer, int block, int parallelDegree = -1)
     {
+        if (parallelDegree < 0)
+            parallelDegree = Environment.ProcessorCount / 2;
+        else if (parallelDegree == 0)
+            parallelDegree = 1;
+        else if (parallelDegree > Environment.ProcessorCount)
+            parallelDegree = Environment.ProcessorCount;
+
         var sub = src.SliceSubUncheck(iStart, iLength, jStart, jLength);
         if (upLo is UpLo.Dense)
         {
-            var pack = new Packing.GEPack(sub, buffer, block, true);
+            var pack = new Packing.GEPack(sub, buffer, block, parallelDegree, true);
             pack.Pack();
         }
         else
         {
             var pack = new Packing.TRPack(unit, upLo, diagOffset, sub,
-                buffer, block, true);
+                buffer, block, parallelDegree, true);
             pack.Pack();
         }
     }
@@ -258,13 +289,15 @@ public static partial class BlasProvider
 
             public ArraySegment<double> Buffer { get; }
 
-            public int MR { get; }
+            public int ParallelDegree { get; }
+
+            public int BlockSize { get; }
 
             public int MCAligned { get; }
 
             public SYPack(UpLo upLo, int diagOffset,
                 in matrix src, int rowStart, int rowLength, int colStart, int colLength, 
-                ArraySegment<double> buffer, int mr, bool packB = false)
+                ArraySegment<double> buffer, int block, int parallelDegree, bool packB = false)
             {
                 if (packB)
                 {
@@ -288,23 +321,24 @@ public static partial class BlasProvider
                 }
 
                 Buffer = buffer;
-                MR = mr;
-                MCAligned = (MC + MR - 1) / MR * MR;
+                ParallelDegree = parallelDegree;
+                BlockSize = block;
+                MCAligned = (MC + BlockSize - 1) / BlockSize * BlockSize;
                 Debug.Assert(buffer.Count >= MCAligned * KC);
             }
 
             public void Pack()
             {
-                ParallelHelperEX.For(0, MCAligned / MR, this,
-                    4, Environment.ProcessorCount / 2);
+                ParallelHelperEX.For(0, MCAligned / BlockSize, this,
+                    4, ParallelDegree);
             }
 
             public void Invoke(int i)
             {
-                var length = KC * MR;
+                var length = KC * BlockSize;
                 var dst = Buffer.AsSpan(i * length, length);
-                var rowOffset = i * MR;
-                var actualMR = Math.Min(M.Rows - rowOffset, MR);
+                var rowOffset = i * BlockSize;
+                var actualMR = Math.Min(M.Rows - rowOffset, BlockSize);
                 var upper = UpLo is UpLo.Upper;
                 ref var slot = ref dst[0];
                 for (int col = 0; col < KC; col++)
@@ -346,7 +380,7 @@ public static partial class BlasProvider
                             offset--;
                         }
                     }
-                    for (; row < MR; row++)
+                    for (; row < BlockSize; row++)
                     {
                         slot = 0;
                         slot = ref Unsafe.Add(ref slot, 1);
@@ -359,16 +393,24 @@ public static partial class BlasProvider
 
     public static void SYMMPack(UpLo upLo, matrix src,
         int iStart, int iLength, int jStart, int jLength, 
-        ArraySegment<double> buffer, int block, bool packB = false)
+        ArraySegment<double> buffer, int block, 
+        int parallelDegree = -1, bool packB = false)
     {
+        if (parallelDegree < 0)
+            parallelDegree = Environment.ProcessorCount / 2;
+        else if (parallelDegree == 0)
+            parallelDegree = 1;
+        else if (parallelDegree > Environment.ProcessorCount)
+            parallelDegree = Environment.ProcessorCount;
+
         if (upLo is UpLo.Dense)
             GEMMPack(src, iStart, iLength,
-                jStart, jLength, buffer, block, packB);
+                jStart, jLength, buffer, block, parallelDegree, packB);
         else
         {
             var pack = new Packing.SYPack(upLo, 0, src,
                 iStart, iLength, jStart, jLength,
-                buffer, block, packB);
+                buffer, block, parallelDegree, packB);
             pack.Pack();
         }
     }

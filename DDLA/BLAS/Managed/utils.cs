@@ -5,6 +5,8 @@ using rscalar = double;
 using DDLA.Misc.Flags;
 using System.Runtime.CompilerServices;
 using EnumsNET;
+using DDLA.UFuncs;
+using DDLA.UFuncs.Operators;
 
 namespace DDLA.BLAS.Managed;
 
@@ -134,88 +136,79 @@ public static partial class BlasProvider
         trans.RemoveFlags(TransType.OnlyTrans) : 
         trans.CombineFlags(TransType.OnlyTrans);
 
-    public static void Asum(in vector x,
-         out rscalar asum)
-    {
-        Source.Asum(
-            x.Length,
-            ref x.GetHeadRef(), x.Stride, out asum);
-    }
+    public static void Asum(in vector x, out rscalar asum)
+        => asum = UFunc.Sum<AbsOperator<double>>(x);
 
-    public static rscalar Nrm1(in matrix a, UpLo uplo = UpLo.Dense)
+    public static rscalar Nrm1(in matrix A, UpLo uplo = UpLo.Dense)
     {
-        var (m, n) = CheckUploMatLength(a, uplo);
+        var (m, n) = CheckUploMatLength(A, uplo);
         Source.Nrm1(0, 0,
             uplo,
             m, n,
-            ref a.GetHeadRef(), a.RowStride, a.ColStride,
+            ref A.GetHeadRef(), A.RowStride, A.ColStride,
             out var norm);
         return norm;
     }
 
-    public static rscalar NrmF(in matrix a, UpLo uplo = UpLo.Dense)
+    public static rscalar NrmF(in matrix A, UpLo uplo = UpLo.Dense)
     {
-        var (m, n) = CheckUploMatLength(a, uplo);
+        var (m, n) = CheckUploMatLength(A, uplo);
         Source.NrmF(0, 0,
             uplo,
             m, n,
-            ref a.GetHeadRef(), a.RowStride, a.ColStride,
+            ref A.GetHeadRef(), A.RowStride, A.ColStride,
             out var norm);
         return norm;
     }
 
-    public static rscalar NrmInf(in matrix a, UpLo uplo = UpLo.Dense)
+    public static rscalar NrmInf(in matrix A, UpLo uplo = UpLo.Dense)
     {
-        var (m, n) = CheckUploMatLength(a, uplo);
+        var (m, n) = CheckUploMatLength(A, uplo);
         Source.NrmInf(0, 0,
             uplo,
             m, n,
-            ref a.GetHeadRef(), a.RowStride, a.ColStride,
+            ref A.GetHeadRef(), A.RowStride, A.ColStride,
             out var norm);
         return norm;
     }
 
-    public static rscalar Nrm1(in vector a)
+    public static rscalar Nrm1(in vector x)
     {
         Source.Nrm1(
-            a.Length,
-            ref a.GetHeadRef(), a.Stride,
+            x.Length,
+            ref x.GetHeadRef(), x.Stride,
             out var norm);
         return norm;
     }
 
-    public static rscalar NrmF(in vector a)
+    public static rscalar NrmF(in vector x)
     {
         Source.NrmF(
-            a.Length,
-            ref a.GetHeadRef(), a.Stride,
+            x.Length,
+            ref x.GetHeadRef(), x.Stride,
             out var norm);
         return norm;
     }
 
-    public static rscalar NrmInf(in vector a)
+    public static rscalar NrmInf(in vector x)
     {
         Source.NrmInf(
-            a.Length,
-            ref a.GetHeadRef(), a.Stride,
+            x.Length,
+            ref x.GetHeadRef(), x.Stride,
             out var norm);
         return norm;
     }
 
-    public static void MakeSy(in matrix a, UpLo uplo = UpLo.Lower)
+    public static void MakeSy(in matrix A, UpLo uplo = UpLo.Lower)
     {
-        int m = CheckSymmMatLength(a, uplo);
-        Source.MkSym(uplo,
-            m,
-            ref a.GetHeadRef(), a.RowStride, a.ColStride);
+        int m = CheckSymmMatLength(A, uplo);
+        Copy(DiagType.Unit, Transpose(uplo), TransType.OnlyTrans, A, A);
     }
 
-    public static void MakeTr(in matrix a, UpLo uplo = UpLo.Lower)
+    public static void MakeTr(in matrix A, UpLo uplo = UpLo.Lower)
     {
-        int m = CheckSymmMatLength(a, uplo);
-        Source.MkTri(uplo,
-            m,
-            ref a.GetHeadRef(), a.RowStride, a.ColStride);
+        int m = CheckSymmMatLength(A, uplo);
+        Set(DiagType.Unit, Transpose(uplo), 0.0, A);
     }
 
     public static void Rand(in vector x)
@@ -223,13 +216,13 @@ public static partial class BlasProvider
         Source.Rand(x.Length, ref x.GetHeadRef(), x.Stride);
     }
 
-    public static void Rand(in matrix a, UpLo uplo = UpLo.Dense)
+    public static void Rand(in matrix A, UpLo uplo = UpLo.Dense)
     {
-        var (m, n) = CheckUploMatLength(a, uplo);
+        var (m, n) = CheckUploMatLength(A, uplo);
         Source.Rand(0,
             uplo,
             m, n,
-            ref a.GetHeadRef(), a.RowStride, a.ColStride);
+            ref A.GetHeadRef(), A.RowStride, A.ColStride);
     }
 
     public static void Sumsq(in vector x, ref rscalar sumsq, ref rscalar scale)
@@ -252,14 +245,14 @@ public static partial class BlasProvider
     }
 
     public static bool Equals(DiagType aDiag, UpLo aUpLo, TransType aTrans,
-        in matrix a, in matrix b)
+        in matrix A, in matrix B)
     {
-        var (m, n) = CheckLength(a, aTrans, b);
+        var (m, n) = CheckLength(A, aTrans, B);
         bool eq = false;
         Source.Eq(0, aDiag, aUpLo, aTrans,
             m, n,
-            ref a.GetHeadRef(), a.RowStride, a.ColStride,
-            ref b.GetHeadRef(), b.RowStride, b.ColStride,
+            ref A.GetHeadRef(), A.RowStride, A.ColStride,
+            ref B.GetHeadRef(), B.RowStride, B.ColStride,
             ref eq);
         return eq;
     }

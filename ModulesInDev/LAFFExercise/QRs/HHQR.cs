@@ -47,7 +47,7 @@ public class HHQR(Matrix A)
         double alpha = Math.Sqrt(alphaSq);
         double rho = -Math.Sign(a11) * alpha;
         double miu = a11 - rho;
-        A21.Scaled(1 / miu);
+        A21.ScaledBy(1 / miu);
         tau = 1 + A21.SumSq();
         a11 = rho;
         tau /= 2;
@@ -83,7 +83,7 @@ public class HHQR(Matrix A)
             a11 = 1 + negInvTau;
             a21.LeftMul(negInvTau, A22, a12);
             A22.Rank1(a21, a12);
-            a21.Scaled(negInvTau);
+            a21.ScaledBy(negInvTau);
         }
     }
 }

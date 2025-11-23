@@ -152,7 +152,7 @@ public class LDLT
                     $" at index {i} with value {a11}.");
             var a21 = A.SliceColUncheck(i, i + 1);
             var A22 = A.SliceSubUncheck(i + 1, i + 1);
-            a21.InvScaled(a11);
+            a21.InvScaledBy(a11);
             A22.Rank1(UpLo.Lower, -a11, a21);
         }
     }
@@ -188,7 +188,7 @@ public class LDLT
                 var Y21 = Work[..A21.Rows, ..A21.Cols];
                 A21.CopyTo(Y21);
                 for (var j = 0; j < block; j++)
-                    A21[.., j].InvScaled(A11[j, j]);
+                    A21[.., j].InvScaledBy(A11[j, j]);
                 GeMMT(UpLo.Lower,
                     -1, Y21, A21.T, 1.0, A22);
             }
@@ -251,7 +251,7 @@ public class LDLT
                 var Y12 = Work[..A12.Rows, ..A12.Cols];
                 A12.CopyTo(Y12);
                 for (var i = 0; i < block; i++)
-                    A12[i, ..].InvScaled(A11[i, i]);
+                    A12[i, ..].InvScaledBy(A11[i, i]);
                 GeMMT(UpLo.Upper,
                     -1.0, A12.T, Y12, 1.0, A22);
             }
@@ -272,7 +272,7 @@ public class LDLT
                 TransType.NoTrans, DiagType.Unit,
                 1, A, X);
             for(var i = 0; i < A.Rows; i++)
-                X.GetRow(i).InvScaled(A[i, i]);
+                X.GetRow(i).InvScaledBy(A[i, i]);
             TrSM(SideType.Left, UpLo.Upper,
                 TransType.NoTrans, DiagType.Unit,
                 1, A.T, X);
@@ -283,7 +283,7 @@ public class LDLT
                 TransType.NoTrans, DiagType.Unit,
                 1, A.T, X);
             for (var i = 0; i < A.Rows; i++)
-                X.GetRow(i).InvScaled(A[i, i]);
+                X.GetRow(i).InvScaledBy(A[i, i]);
             TrSM(SideType.Left, UpLo.Upper,
                 TransType.NoTrans, DiagType.Unit,
                 1, A, X);

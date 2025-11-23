@@ -19,6 +19,8 @@ public interface IMacroKernel : IActionEX
     public int NC { get; }
 
     public int KC { get; }
+
+    public int ParallelDegree { get; }
 }
 
 public readonly struct GEMMMacroKernel : IMacroKernel
@@ -32,6 +34,8 @@ public readonly struct GEMMMacroKernel : IMacroKernel
     public int NC { get; }
 
     public int KC { get; }
+
+    public int ParallelDegree { get; }
 
     public int MCAligned => (MC + MR - 1) / MR * MR;
 
@@ -49,13 +53,21 @@ public readonly struct GEMMMacroKernel : IMacroKernel
 
     public GEMMMacroKernel(int mr, int nr, int mc, int nc, int kc,
         scalar alpha, ArraySegment<scalar> aBuffer,
-        ArraySegment<scalar> bBuffer, in matrix c, GEMMKernel kernel)
+        ArraySegment<scalar> bBuffer, in matrix c, GEMMKernel kernel, int parallelDegree = -1)
     {
+        if (parallelDegree < 0)
+            parallelDegree = Environment.ProcessorCount / 2;
+        else if (parallelDegree == 0)
+            parallelDegree = 1;
+        else if (parallelDegree > Environment.ProcessorCount)
+            parallelDegree = Environment.ProcessorCount;
+
         MR = mr;
         NR = nr;
         MC = mc;
         NC = nc;
         KC = kc;
+        ParallelDegree = parallelDegree;
         Alpha = alpha;
         ABuffer = aBuffer;
         BBuffer = bBuffer;
@@ -70,7 +82,7 @@ public readonly struct GEMMMacroKernel : IMacroKernel
     {
         int iCycles = MCAligned / MR;
         ParallelHelperEX.For(0, iCycles, this, 4,
-            Environment.ProcessorCount / 2);
+            ParallelDegree);
     }
 
     public void Invoke(int i)
@@ -108,6 +120,8 @@ public readonly struct GEMMTMacroKernel : IMacroKernel
 
     public int KC { get; }
 
+    public int ParallelDegree { get; }
+
     public int MCAligned => MC.Align(MR);
 
     public int NCAligned => NC.Align(NR);
@@ -128,11 +142,19 @@ public readonly struct GEMMTMacroKernel : IMacroKernel
 
     public GEMMTMacroKernel(int mr, int nr, int kc,
         UpLo uplo, int diag, scalar alpha, ArraySegment<scalar> aBuffer,
-        ArraySegment<scalar> bBuffer, in matrix c, GEMMKernel kernel)
+        ArraySegment<scalar> bBuffer, in matrix c, GEMMKernel kernel, int parallelDegree = -1)
     {
+        if (parallelDegree < 0)
+            parallelDegree = Environment.ProcessorCount / 2;
+        else if (parallelDegree == 0)
+            parallelDegree = 1;
+        else if (parallelDegree > Environment.ProcessorCount)
+            parallelDegree = Environment.ProcessorCount;
+
         MR = mr;
         NR = nr;
         KC = kc;
+        ParallelDegree = parallelDegree;
         UpLo = uplo;
         DiagOffset = diag;
         Alpha = alpha;
@@ -147,12 +169,12 @@ public readonly struct GEMMTMacroKernel : IMacroKernel
     public void Invoke()
     {
         int iCycles = MCAligned / MR;
-        for (int i = 0; i < iCycles; i++)
-        {
-            Invoke(i);
-        }
-        //ParallelHelperEX.For(0, iCycles, this, 4,
-        //    Environment.ProcessorCount / 2);
+        //for (int i = 0; i < iCycles; i++)
+        //{
+        //   Invoke(i);
+        //}
+        ParallelHelperEX.For(0, iCycles, this, 4,
+            ParallelDegree);
     }
 
     public void Invoke(int index)
@@ -212,63 +234,6 @@ public readonly struct GEMMTMacroKernel : IMacroKernel
 
                 // Add back
                 // BlasProvider.Axpy(Alpha, blockMatrixBuffer, blockMatrixC);
-            }
-        }
-    }
-    public void Invoke2(int index)
-    {
-        var i = index * MR;
-        var diag = DiagOffset + i;
-        var length = KC * MR;
-        var offset = index * length;
-        var actualMR = Math.Min(MC - i, MR);
-        Span<scalar> bufferA = ABuffer.AsSpan(offset, length);
-        using var bufferHandler = InternalPool.TakeMatrix
-            (MR, NR, out var bufferCMatrix, !Kernel.preferCol, init: false);
-        Span<scalar> bufferC = bufferCMatrix.GetSpan();
-        for (int j = 0; j < NCAligned; j += NR)
-        {
-            var actualNR = Math.Min(NC - j, NR);
-            var blockMatrixC = C.SliceSubUncheck(index * MR, actualMR, j, actualNR);
-            var blockMatrixBuffer = bufferCMatrix.SliceSubUncheck(0, actualMR,
-                0, actualNR);
-            Span<scalar> bufferB = BBuffer.AsSpan(j * KC, KC * NR);
-
-            if (UpLo is UpLo.Upper)
-            {
-                if (diag >= actualNR) 
-                    continue;
-
-                Kernel.Kernel(bufferA, bufferB, bufferC, MR, NR, KC);
-
-                // Masked Copy:  col >= row + diag
-                for (int row = 0; row < actualMR; row++)
-                {
-                    int start = Math.Max(0, row + diag);
-                    for (int col = start; col < actualNR; col++)
-                    {
-                        blockMatrixC.AtUncheck(row, col) += Alpha * 
-                            blockMatrixBuffer.AtUncheck(row, col);
-                    }
-                }
-            }
-            else
-            {
-                if (diag <= -actualMR)
-                    continue;
-
-                Kernel.Kernel(bufferA, bufferB, bufferC, MR, NR, KC);
-
-                // Masked Copy:  col <= row + diag
-                for (int row = 0; row < actualMR; row++)
-                {
-                    int end = Math.Min(actualNR, row + diag + 1);
-                    for (int col = 0; col < end; col++)
-                    {
-                        blockMatrixC.AtUncheck(row, col) += Alpha * 
-                            blockMatrixBuffer.AtUncheck(row, col);
-                    }
-                }
             }
         }
     }

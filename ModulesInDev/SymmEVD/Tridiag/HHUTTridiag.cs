@@ -76,7 +76,7 @@ public class HHUTTridiag : TridiagBase
                     0, p);
                 var beta = a21 * p / (2 * tau11);
                 p.AddedBy(-beta, a21);
-                p.InvScaled(tau11);
+                p.InvScaledBy(tau11);
                 A22.Rank2(UpLo.Lower,
                     -1.0, a21, p);
 
@@ -190,7 +190,7 @@ public class HHUTTridiag : TridiagBase
         sigma = double.CopySign(lenx, chi);
         double invScale = 1 / (chi - sigma);
         chi = 1;
-        xLast.Scaled(invScale);
+        xLast.ScaledBy(invScale);
         lenLast *= invScale;
         tau = (1 + lenLast * lenLast) / 2;
     }

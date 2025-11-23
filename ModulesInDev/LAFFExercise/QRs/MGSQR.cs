@@ -31,7 +31,7 @@ public class MGSQR(Matrix A)
             var r12 = R[j, (j + 1)..];
 
             // amj := amj/ρ11
-            amj.InvScaled(rho11);
+            amj.InvScaledBy(rho11);
 
             // R12 := Amj^H * Am2
             amj.LeftMul(Am2, output: r12);

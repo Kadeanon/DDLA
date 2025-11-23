@@ -90,6 +90,26 @@ namespace DDLA.Misc.Pools
             return new(Instance, handle);
         }
 
+        public static VectorHandle TakeVectorView(int length,
+            out VectorView vec, bool init = true)
+        {
+            var handle = new ArrayHandle<double, ArrayPool<double>>
+                (Instance.Pool, length, out var data);
+            vec = new(data, 0, length);
+            if (init) vec.Clear();
+            return new(Instance, handle);
+        }
+
+        public static VectorHandle TakeVectorView(int length,
+            out VectorView vec, double fill)
+        {
+            var handle = new ArrayHandle<double, ArrayPool<double>>
+                (Instance.Pool, length, out var data);
+            vec = new(data);
+            vec.Fill(fill);
+            return new(Instance, handle);
+        }
+
         public static MatrixHandle TakeMatrix(int rows, int cols,
             out Matrix mat, bool rowMajor = true, bool init = true)
         {

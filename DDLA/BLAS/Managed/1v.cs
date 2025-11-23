@@ -481,10 +481,26 @@ public static partial class BlasProvider
     /// smaller than any other value.</remarks>
     public static int AMax(in vector x)
     {
-        int length = x.Length;
-        if (length == 0) return 0;
-        Source.Amax(length, ref x.GetHeadRef(), x.Stride, out var indexDim);
-        return (int)indexDim;
+        if (x.Length <= 1)
+            return 0;
+        else
+        {
+            int index = -1;
+            double max = 0;
+            ref double xRef = ref x[0];
+            for (int i = 0; i < x.Length; i++)
+            {
+                var xAbs = Math.Abs(xRef);
+                if (scalar.IsNaN(xAbs)) return i;
+                if (xAbs > max)
+                {
+                    max = xAbs;
+                    index = i;
+                }
+                xRef = ref Unsafe.Add(ref xRef, x.Stride);
+            }
+            return index;
+        }
     }
 
     /// <summary>
