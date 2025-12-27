@@ -28,6 +28,17 @@ public static partial class UFunc
             (ref src.GetHeadRef(), alpha, src.Indice, action.OrDefault());
     }
 
+    /// <summary>
+    /// src := Invoke(alpha)
+    /// </summary>
+    public static void Apply<TAction>(
+        this VectorView src, double alpha, TAction? action = null)
+        where TAction : struct, IUnaryOperator<double, double>
+    {
+        Details.Apply_Impl
+            (ref src.GetHeadRef(), alpha, src.Indice, action.OrDefault());
+    }
+
     public static partial class Details
     {
         public static void Apply_Impl<TAction, TIn>(ref double xHead,
@@ -291,6 +302,17 @@ public static partial class UFunc
         this VectorView src, TIn alpha, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
+    {
+        Details.Map_Impl(ref src.GetHeadRef(),
+            alpha, src.Indice, action.OrDefault());
+    }
+
+    /// <summary>
+    /// src := Invoke(src, alpha)
+    /// </summary>
+    public static void Map<TAction>(
+        this VectorView src, double alpha, TAction? action = null)
+                where TAction : struct, IBinaryOperator<double, double, double>
     {
         Details.Map_Impl(ref src.GetHeadRef(),
             alpha, src.Indice, action.OrDefault());
@@ -600,6 +622,19 @@ public static partial class UFunc
         this VectorView src, TIn alpha, VectorView dest, TAction? action = null)
                 where TAction : struct, IBinaryOperator<double, TIn, double>
         where TIn : struct
+    {
+        var indice = CheckIndice(src, dest);
+        Details.Map_Impl
+            (ref src.GetHeadRef(),
+            alpha, ref dest.GetHeadRef(), indice, action.OrDefault());
+    }
+
+    /// <summary>
+    /// dest := Invoke(src, alpha)
+    /// </summary>
+    public static void Map<TAction>(
+        this VectorView src, double alpha, VectorView dest, TAction? action = null)
+                where TAction : struct, IBinaryOperator<double, double, double>
     {
         var indice = CheckIndice(src, dest);
         Details.Map_Impl
@@ -940,6 +975,18 @@ public static partial class UFunc
         this VectorView src, TIn alpha, VectorView dest, TAction? action = null)
                 where TAction : struct, ITernaryOperator<double, TIn, double, double>
         where TIn : struct
+    {
+        var indice = CheckIndice(src, dest);
+        Details.Combine_Impl(ref src.GetHeadRef(),
+            alpha, ref dest.GetHeadRef(), indice, action.OrDefault());
+    }
+
+    /// <summary>
+    /// dest := Invoke(src, alpha, dest)
+    /// </summary>
+    public static void Combine<TAction>(
+        this VectorView src, double alpha, VectorView dest, TAction? action = null)
+                where TAction : struct, ITernaryOperator<double, double, double, double>
     {
         var indice = CheckIndice(src, dest);
         Details.Combine_Impl(ref src.GetHeadRef(),

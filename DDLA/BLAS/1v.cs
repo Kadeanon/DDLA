@@ -8,8 +8,6 @@ using matrix = DDLA.Core.MatrixView;
 
 using SIMDVec = System.Numerics.Vector<double>;
 using SIMDExt = System.Numerics.Vector;
-using DDLA.Utilities;
-using DistIL.Attributes;
 using DDLA.UFuncs;
 using System.Runtime.Intrinsics.X86;
 

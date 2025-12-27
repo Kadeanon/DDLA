@@ -14,13 +14,6 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="DistIL.OptimizerTask" Version="0.13.0-preview">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
-
-	<ItemGroup>
     <None Update="NATIVE\*.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

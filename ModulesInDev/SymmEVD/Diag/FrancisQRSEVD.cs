@@ -32,7 +32,7 @@ public class FrancisQRSEVD(VectorView d,
     {
         using var _ = PoolUtils.Borrow<Givens>(e.Length, out var rots);
         _parallelLevel = 0;
-        ImplicitQrTridiag(d, e, Q, rots);
+        ImplicitQrTridiag(d, 0, e, Q, rots);
         SortResults();
         //Console.WriteLine($"Average calculate a eigenValue use {TotalIter / d.Length} sweep.");
     }
@@ -93,7 +93,7 @@ public class FrancisQRSEVD(VectorView d,
         }
     }
 
-    public void ImplicitQrTridiag(VectorView d,
+    public void ImplicitQrTridiag(VectorView d, int dStart,
         VectorView e, MatrixView Q, ArraySegment<Givens> rots)
     {
         int m;
@@ -167,7 +167,6 @@ public class FrancisQRSEVD(VectorView d,
                 // 矩阵分割，处理子问题
                 // 左边：start..m 右边：m..end
                 // 递归调用
-                var dStart = d.Offset;
 
                 var d0 = d[start..(m + 1)];
                 var e0 = e[start..m];
@@ -184,14 +183,14 @@ public class FrancisQRSEVD(VectorView d,
                     $"and {dStart + m}..{dStart + end + 1}");
                 if (Interlocked.Increment(ref _parallelLevel) <= _maxParallelLevel)
                 {
-                    var task = Task.Run(() => ImplicitQrTridiag(d1, e1, Q1, rot1));
-                    ImplicitQrTridiag(d0, e0, Q0, rot0);
+                    var task = Task.Run(() => ImplicitQrTridiag(d1, dStart, e1, Q1, rot1));
+                    ImplicitQrTridiag(d0, dStart + m, e0, Q0, rot0);
                     task.Wait();
                 }
                 else
                 {
-                    ImplicitQrTridiag(d0, e0, Q0, rot0);
-                    ImplicitQrTridiag(d1, e1, Q1, rot1);
+                    ImplicitQrTridiag(d0, dStart, e0, Q0, rot0);
+                    ImplicitQrTridiag(d1, dStart + m, e1, Q1, rot1);
                 }
                 _parallelLevel--;
                 break;

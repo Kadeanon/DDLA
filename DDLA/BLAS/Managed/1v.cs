@@ -13,7 +13,6 @@ using SIMDVec = System.Numerics.Vector<double>;
 using SIMDExt = System.Numerics.Vector;
 using static DDLA.UFuncs.UFunc;
 using DDLA.Misc.Flags;
-using DistIL.Attributes;
 
 namespace DDLA.BLAS.Managed;
 

@@ -202,7 +202,7 @@ public static partial class BlasProvider
     public static void MakeSy(in matrix A, UpLo uplo = UpLo.Lower)
     {
         int m = CheckSymmMatLength(A, uplo);
-        Copy(DiagType.Unit, Transpose(uplo), TransType.OnlyTrans, A, A);
+        Copy(DiagType.Unit, Transpose(uplo), TransType.OnlyTrans, A.T, A.T);
     }
 
     public static void MakeTr(in matrix A, UpLo uplo = UpLo.Lower)
