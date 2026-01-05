@@ -12,8 +12,7 @@ public static partial class UFunc
     public static TOperator OrDefault<TOperator>(this TOperator? input)
         where TOperator : struct, IOperator
     {
-        return input ?? (TOperator.ShouldManualInitialize
-            ? new TOperator() : default);
+        return input ?? new TOperator();
     }
 
     /// <summary>

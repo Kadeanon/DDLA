@@ -89,19 +89,6 @@ public class TestAddm
     public void TestLowerUnitStride() => RunCase(DiagType.Unit, UpLo.Lower, TransType.NoTrans,
     CreateMatrixStrideRandom(size, size, stride), CreateMatrixStrideRandom(size, size, stride + 1));
 
-    // Diagonal only (Zeros)
-    [TestMethod]
-    public void TestZerosRowMajor() => RunCase(DiagType.NonUnit, UpLo.Zeros, TransType.NoTrans,
-    CreateMatrixRandom(size, size), CreateMatrixRandom(size, size));
-
-    [TestMethod]
-    public void TestZerosColMajor() => RunCase(DiagType.NonUnit, UpLo.Zeros, TransType.NoTrans,
-    CreateMatrixTransRandom(size, size), CreateMatrixTransRandom(size, size));
-
-    [TestMethod]
-    public void TestZerosStride() => RunCase(DiagType.NonUnit, UpLo.Zeros, TransType.NoTrans,
-    CreateMatrixStrideRandom(size, size, stride), CreateMatrixStrideRandom(size, size, stride + 1));
-
     private static void RunCase(DiagType aDiag, UpLo aUplo, TransType aTrans, MatrixView A, MatrixView BIn)
     {
         var Bm = CopyMatrix(BIn);

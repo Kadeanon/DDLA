@@ -6,7 +6,7 @@ namespace Tests.TestManagedBlas.Level3m;
 [TestClass]
 public class TestTrSM
 {
-    internal static int length = Random.Shared.Next(513, 768);
+    internal static int length = Random.Shared.Next(513, 768) + 512;
 
     [TestMethod]
     public void TestRowMajorUpperLeftTrSMLeft()
@@ -110,7 +110,7 @@ public class TestTrSM
         BlisProvider.ShiftDiag(2, a);
         double alpha = 1.2;
         var result = CreateMatrixRandom(length, length);
-        BlasProvider.TrMM(side, uplo, alpha, a, result);
+        BlisProvider.TrMM(side, uplo, alpha, a, result);
         var expected = result.Clone();
         BlasProvider.TrSM(side, uplo, alpha, a, result);
         BlisProvider.TrSM(side, uplo, alpha, a, expected);

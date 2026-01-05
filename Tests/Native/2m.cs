@@ -18,7 +18,7 @@ public static partial class BlasProvider
         if (m == 0 || n == 0) 
             return;
 
-        Source.GeMV(aTrans, 
+        Blis.GeMV(aTrans, 
             ConjType.NoConj, 
             A.Rows, A.Cols, 
             alpha, 
@@ -39,7 +39,7 @@ public static partial class BlasProvider
         CheckLength(x, m);
         CheckLength(y, n);
 
-        Source.GeR(ConjType.NoConj, 
+        Blis.GeR(ConjType.NoConj, 
             ConjType.NoConj, 
             m, n, 
             in alpha, 
@@ -55,7 +55,7 @@ public static partial class BlasProvider
         CheckLength(x, length);
         CheckLength(y, length);
 
-        Source.SyMV(aUplo,
+        Blis.SyMV(aUplo,
             ConjType.NoConj,
             ConjType.NoConj, 
             length, 
@@ -72,7 +72,7 @@ public static partial class BlasProvider
         int length = CheckSymmMatLength(A, aUplo);
         CheckLength(x, length);
 
-        Source.SyR(aUplo, 
+        Blis.SyR(aUplo, 
             ConjType.NoConj, 
             length, 
             in alpha,
@@ -87,7 +87,7 @@ public static partial class BlasProvider
         CheckLength(x, length);
         CheckLength(y, length);
 
-        Source.SyR2(aUplo, 
+        Blis.SyR2(aUplo, 
             ConjType.NoConj, 
             ConjType.NoConj, 
             length, 
@@ -103,7 +103,7 @@ public static partial class BlasProvider
         int length = CheckSymmMatLength(A, aUplo);
         CheckLength(x, length);
 
-        Source.TrMV(aUplo,
+        Blis.TrMV(aUplo,
             aTrans,
             aDiag,
             length,
@@ -124,7 +124,7 @@ public static partial class BlasProvider
         int length = CheckSymmMatLength(A, aUplo);
         CheckLength(y, length);
 
-        Source.TrSV(aUplo,
+        Blis.TrSV(aUplo,
             aTrans,
             aDiag,
             length,

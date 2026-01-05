@@ -2,7 +2,7 @@
 using DDLA.Misc;
 using DDLA.Misc.Flags;
 using DDLA.Transformations;
-using static DDLA.BLAS.BlasProvider;
+using static DDLA.BLAS.Managed.BlasProvider;
 
 namespace ModulesInDev.SymmEVD.Tridiag;
 

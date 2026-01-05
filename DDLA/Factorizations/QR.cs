@@ -1,12 +1,11 @@
 ﻿// These algorithms are ported from LibFlame.
 // https://github.com/flame/libflame
 
-using DDLA.BLAS;
 using DDLA.Core;
 using DDLA.Misc;
 using DDLA.Misc.Flags;
 
-using static DDLA.BLAS.BlasProvider;
+using static DDLA.BLAS.Managed.BlasProvider;
 using static DDLA.Transformations.HouseHolder;
 
 namespace DDLA.Factorizations;
@@ -116,7 +115,7 @@ public class QR
         FormQ(matrix, aux, Q);
 
         R = new(matrix);
-        Set(DiagType.Unit, UpLo.Lower, 0.0, matrix);
+        Set(DiagType.Unit, UpLo.Lower, 0.0, R);
 
         deconstructed = true;
     }
@@ -217,13 +216,11 @@ public class QR
             QBR.Diag.Fill(0);
         }
 
-        // Set the digaonal to one.
         A.Diag.Fill(1);
 
         var W = Matrix.Create(T.Rows, A.MaxDim);
 
         FormQBlock(A, T, W);
-
     }
 
     internal static void FormQUnblock(MatrixView A, MatrixView T)
@@ -351,17 +348,16 @@ public class QR
 
     internal static void QRDecBlock(MatrixView A, MatrixView T)
     {
-        // Query the algorithmic blocksize by inspecting the length of T.
         int blockside = T.Rows;
-        var partA = PartitionGrid.Create
-            (A, 0, 0, Quadrant.TopLeft,
+        var partA = PartitionGrid.FromTopLeft(A,
             out var A00, out var A01, out var A02,
             out var A10, out var A11, out var A12,
             out var A20, out var A21, out var A22);
 
-        var partT = PartitionHorizontal.Create
-            (T, 0, SideType.Left,
-            out var T0, out var T1, out var T2);
+        var partT = PartitionHorizontal.FromLeft(T, 
+            out var T0, 
+            out var T1, 
+            out var T2);
 
         while (A22.MinDim > 0)
         {
@@ -372,10 +368,9 @@ public class QR
 
             var T1t = T1.SliceSubUncheck(0, b, 0, T1.Cols);
             PartUtils.Merge21to11(A11,
-                                 A21, out var Ab1);
+                                  A21, out var Ab1);
 
             QRDecUnblock(Ab1, T1t);
-
 
             if (A12.Cols > 0)
             {
@@ -416,61 +411,55 @@ public class QR
     /// <param name="B">The target matrix B.</param>
     public static void ApplyQlhfc(MatrixView A, MatrixView T, MatrixView W, MatrixView B)
     {
-
         int block = T.Rows;
-        int width = B.Cols;
-        var partA = PartitionGrid.Create
-            (A, 0, 0, Quadrant.TopLeft,
+        var partA = PartitionGrid.FromTopLeft(A, 
             out var A00, out var A01, out var A02,
             out var A10, out var A11, out var A12,
             out var A20, out var A21, out var A22);
-        var partT = PartitionHorizontal.Create
-            (T, 0, SideType.Left,
+        var partT = PartitionHorizontal.FromLeft(T,
             out var T0, out var T1, out var T2);
-        var partB = PartitionVertical.Create
-            (B, 0, UpLo.Upper,
-            out var B0, out var B1, out var B2);
+        var partB = PartitionVertical.FromTop(B, 
+            out var B0, 
+            out var B1, 
+            out var B2);
 
         while (A22.MinDim > 0)
         {
-
             int b = Math.Min(block, A22.MinDim);
             using var partAStep = partA.Step(b, b);
             using var partTStep = partT.Step(b);
             using var partBStep = partB.Step(b);
 
-            var slice = ..(b);
-            var T1t = T1[slice, ..];
-            var wtl = W[slice, ..];
+            var slice = ..b;
+            var T1T = T1[slice, ..];
+            var WTL = W[slice, ..];
 
-            B1.CopyTo(wtl);
+            B1.CopyTo(WTL);
 
             TrMM(SideType.Left, UpLo.Lower,
                 TransType.OnlyTrans, DiagType.Unit,
-                1, A11, wtl);
+                1, A11, WTL);
 
             GeMM(1, A21.T,
-                B2, 1, wtl);
+                B2, 1, WTL);
 
             TrSM(SideType.Left, UpLo.Upper,
                 TransType.OnlyTrans, DiagType.NonUnit,
-                1, T1t, wtl);
+                1, T1T, WTL);
 
-            GeMM(-1, A21, wtl, 1, B2);
+            GeMM(-1, A21, WTL, 1, B2);
 
             TrMM(SideType.Left, UpLo.Lower,
                 TransType.NoTrans, DiagType.Unit,
-                -1, A11, wtl);
+                -1, A11, WTL);
 
-            Axpy(1, wtl, B1);
+            Axpy(1, WTL, B1);
         }
     }
 
     public static void ApplyQlnfc(MatrixView A, MatrixView T, MatrixView W, MatrixView B)
     {
         int block = T.Rows;
-        int b;
-
         int m_BR = 0;
         int n_BR = 0;
         if (A.Rows > A.Cols)
@@ -495,7 +484,7 @@ public class QR
 
         while (A00.MinDim > 0)
         {
-            b = Math.Min(block, A00.MinDim);
+            int b = Math.Min(block, A00.MinDim);
 
             if (T2.Cols == 0 && T.Cols % block > 0)
                 b = T.Cols % block;
@@ -530,5 +519,4 @@ public class QR
             Axpy(1, w00, B1);
         }
     }
-
 }

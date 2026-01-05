@@ -6,13 +6,13 @@ namespace Tests.TestFlame;
 [TestClass]
 public class TestSVD
 {
-    private int RandTiny() => Random.Shared.Next(3, 8);
+    private int RandTiny => Random.Shared.Next(3, 8);
 
-    private int RandSmall() => Random.Shared.Next(31, 96);
+    private int RandSmall => Random.Shared.Next(31, 96);
 
-    private int RandMedium() => Random.Shared.Next(127, 384);
+    private int RandMedium => Random.Shared.Next(127, 384);
 
-    private int RandLarge() => Random.Shared.Next(785, 1536);
+    private int RandLarge => Random.Shared.Next(785, 1536);
 
     [TestMethod]
     public void TestTinySVDLower()
@@ -30,7 +30,7 @@ public class TestSVD
     public void TestLargeSVDLower()
     => TestSVDCore(RandLarge, RandLarge, 1e-9);
 
-    private static void TestSVDCore(Func<int> rows, Func<int> cols, double tol = 1e-10)
+    private static void TestSVDCore(int rows, int cols, double tol = 1e-10)
     {
         int count = 1;
         for (int i = 0; i < count; i++)
@@ -38,8 +38,8 @@ public class TestSVD
             // if(m < n)  (m, n) = (n, m);
 
             // Build a random symmetric matrix
-            var m = rows();
-            var n = cols();
+            var m = rows;
+            var n = cols;
             Console.WriteLine($"Testing SVD with matrix size {m} x {n}");
             Matrix A = Matrix.RandomDense(m, n);
             Matrix orig = A.Clone();

@@ -10,6 +10,62 @@ namespace DDLA.BLAS.Managed;
 
 public static partial class BlasProvider
 {
+    public static void SyMM
+        (SideType aSide, UpLo aUplo,
+        TransType aTrans, TransType bTrans,
+        scalar alpha,
+        in matrix A,
+        in matrix B,
+        scalar beta,
+        in matrix C)
+    {
+        var (m, n) = GetLengths(C);
+
+        var AEffective = A;
+        var BEffective = B;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            AEffective = A.T;
+            aUplo = Transpose(aUplo);
+        }
+        if (bTrans.HasFlag(TransType.OnlyTrans))
+        {
+            BEffective = B.T;
+        }
+        var k = m;
+        var bUplo = UpLo.Dense;
+        if (aSide is SideType.Right)
+        {
+            (AEffective, BEffective) = (B, A);
+            k = n;
+            bUplo = aUplo;
+            aUplo = UpLo.Dense;
+        }
+        CheckLengths(AEffective, m, k);
+        CheckLengths(BEffective, k, n);
+
+        if (m == 0 || n == 0) return;
+        CheckLengths(BEffective, k, n);
+
+        Scal(beta, C);
+        if (k == 0) return;
+
+        SyMMInner(m, n, k, alpha,
+            aUplo, AEffective,
+            bUplo, BEffective,
+            C);
+    }
+
+    public static void SyMM
+        (SideType aSide, UpLo aUplo,
+        scalar alpha,
+        in matrix A,
+        in matrix B,
+        scalar beta,
+        in matrix C)
+        => SyMM(aSide, aUplo, TransType.NoTrans, TransType.NoTrans,
+            alpha, A, B, beta, C);
+
     private static void SyMMInner(int m, int n, int k, scalar alpha,
         UpLo aUplo, matrix A,
         UpLo bUplo, matrix B,

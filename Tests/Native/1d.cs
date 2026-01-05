@@ -15,7 +15,7 @@ public static partial class BlasProvider
         in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
-        Source.Add(0, aDiag, aTrans, 
+        Blis.Add(0, aDiag, aTrans, 
             m, n, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
             ref B.GetHeadRef(), B.RowStride, B.ColStride);
@@ -29,7 +29,7 @@ public static partial class BlasProvider
         scalar alpha, in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
-        Source.Axpy(0, aDiag, aTrans, 
+        Blis.Axpy(0, aDiag, aTrans, 
             m, n, 
             in alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -44,7 +44,7 @@ public static partial class BlasProvider
         in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
-        Source.Copy(0, aDiag, aTrans, 
+        Blis.Copy(0, aDiag, aTrans, 
             m, n, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
             ref B.GetHeadRef(), B.RowStride, B.ColStride);
@@ -57,7 +57,7 @@ public static partial class BlasProvider
     public static void InvertDiag(in matrix A)
     {
         var (m, n) = GetLengths(A);
-        Source.Invert(0, 
+        Blis.Invert(0, 
             m, n, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
     }
@@ -66,7 +66,7 @@ public static partial class BlasProvider
     {
         var (m, n) = GetLengths(A);
         ArgumentOutOfRangeException.ThrowIfEqual(alpha, 0, nameof(alpha));
-        Source.Scal(ConjType.NoConj, 0, 
+        Blis.Scal(ConjType.NoConj, 0, 
             m, n, 
             1 / alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
@@ -75,7 +75,7 @@ public static partial class BlasProvider
     public static void ScalDiag(scalar alpha, in matrix A)
     {
         var (m, n) = GetLengths(A);
-        Source.Scal(ConjType.NoConj, 0, 
+        Blis.Scal(ConjType.NoConj, 0, 
             m, n, 
             alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
@@ -86,7 +86,7 @@ public static partial class BlasProvider
         scalar alpha, in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
-        Source.Scal2(0, aDiag, aTrans, 
+        Blis.Scal2(0, aDiag, aTrans, 
             m, n, 
             in alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -96,7 +96,7 @@ public static partial class BlasProvider
     public static void SetDiag(scalar alpha, in matrix A)
     {
         var (m, n) = GetLengths(A);
-        Source.Set(ConjType.NoConj, 0, 
+        Blis.Set(ConjType.NoConj, 0, 
             m, n, 
             alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
@@ -105,7 +105,7 @@ public static partial class BlasProvider
     public static void ShiftDiag(scalar alpha, in matrix A)
     {
         var (m, n) = GetLengths(A);
-        Source.Shift(0, 
+        Blis.Shift(0, 
             m, n, 
             alpha, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride);
@@ -116,7 +116,7 @@ public static partial class BlasProvider
         in matrix A, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
-        Source.Sub(0, aDiag, aTrans, 
+        Blis.Sub(0, aDiag, aTrans, 
             m, n, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
             ref B.GetHeadRef(), B.RowStride, B.ColStride);
@@ -127,7 +127,7 @@ public static partial class BlasProvider
         in matrix A, scalar beta, in matrix B)
     {
         var (m, n) = CheckLength(A, aTrans, B);
-        Source.Xpby(0, aDiag, aTrans, 
+        Blis.Xpby(0, aDiag, aTrans, 
             m, n, 
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
             beta, 

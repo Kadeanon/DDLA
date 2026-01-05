@@ -22,7 +22,7 @@ public static partial class BlasProvider
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Add(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
+        Blis.Add(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
     }
 
     /// <summary>
@@ -34,7 +34,7 @@ public static partial class BlasProvider
     {
         int length = x.Length;
         if (length == 0) return 0;
-        Source.Amax(length, ref x.GetHeadRef(), x.Stride, out var indexDim);
+        Blis.Amax(length, ref x.GetHeadRef(), x.Stride, out var indexDim);
         return (int)indexDim;
     }
 
@@ -45,28 +45,28 @@ public static partial class BlasProvider
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Axpy(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
+        Blis.Axpy(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
     }
 
     public static void Axpby(scalar alpha, in vector x, scalar beta, in vector y)
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Axpby(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, in beta, ref y.GetHeadRef(), y.Stride);
+        Blis.Axpby(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, in beta, ref y.GetHeadRef(), y.Stride);
     }
 
     public static void Copy(in vector x, in vector y)
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Copy(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
+        Blis.Copy(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
     }
 
     public static scalar Dot(in vector x, in vector y)
     {
         int length = CheckLength(x, y);
         if (length == 0) return 0.0;
-        Source.Dot(ConjType.NoConj, ConjType.NoConj, 
+        Blis.Dot(ConjType.NoConj, ConjType.NoConj, 
             length, 
             ref x.GetHeadRef(), x.Stride, 
             ref y.GetHeadRef(), y.Stride, 
@@ -82,14 +82,14 @@ public static partial class BlasProvider
             rho *= beta;
             return;
         }
-        Source.Dotx(ConjType.NoConj, ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride, in beta, ref rho);
+        Blis.Dotx(ConjType.NoConj, ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride, in beta, ref rho);
     }
 
     public static void Invert(in vector x)
     {
         int length = x.Length;
         if (length == 0) return;
-        Source.Invert(length, ref x.GetHeadRef(), x.Stride);
+        Blis.Invert(length, ref x.GetHeadRef(), x.Stride);
     }
 
     public static void InvScal(scalar alpha, in vector x)
@@ -97,42 +97,42 @@ public static partial class BlasProvider
         ArgumentOutOfRangeException.ThrowIfEqual(alpha, 0, nameof(alpha));
         int length = x.Length;
         if (length == 0) return;
-        Source.Scal(ConjType.NoConj, length, 1 / alpha, ref x.GetHeadRef(), x.Stride);
+        Blis.Scal(ConjType.NoConj, length, 1 / alpha, ref x.GetHeadRef(), x.Stride);
     }
 
     public static void Scal(scalar alpha, in vector x)
     {
         int length = x.Length;
         if (length == 0) return;
-        Source.Scal(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride);
+        Blis.Scal(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride);
     }
 
     public static void Scal2(scalar alpha, in vector x, in vector y)
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Scal2(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
+        Blis.Scal2(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
     }
 
     public static void Set(scalar alpha, in vector x)
     {
         int length = x.Length;
         if (length == 0) return;
-        Source.Set(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride);
+        Blis.Set(ConjType.NoConj, length, alpha, ref x.GetHeadRef(), x.Stride);
     }
 
     public static void Sub(in vector x, in vector y)
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Sub(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
+        Blis.Sub(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
     }
 
     public static void Swap(in vector x, in vector y)
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Swap(length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
+        Blis.Swap(length, ref x.GetHeadRef(), x.Stride, ref y.GetHeadRef(), y.Stride);
     }
 
     public static void Shift(scalar alpha, in vector x)
@@ -142,7 +142,7 @@ public static partial class BlasProvider
     {
         int length = CheckLength(x, y);
         if (length == 0) return;
-        Source.Xpby(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, in beta, ref y.GetHeadRef(), y.Stride);
+        Blis.Xpby(ConjType.NoConj, length, ref x.GetHeadRef(), x.Stride, in beta, ref y.GetHeadRef(), y.Stride);
     }
 
     /// <summary>

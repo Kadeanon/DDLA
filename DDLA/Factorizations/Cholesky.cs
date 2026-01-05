@@ -1,9 +1,8 @@
 ﻿using DDLA.Core;
 using DDLA.Misc;
 using DDLA.Misc.Flags;
-using System.Runtime.CompilerServices;
 
-using static DDLA.BLAS.BlasProvider;
+using static DDLA.BLAS.Managed.BlasProvider;
 
 namespace DDLA.Factorizations;
 

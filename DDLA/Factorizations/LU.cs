@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-using static DDLA.BLAS.BlasProvider;
+using static DDLA.BLAS.Managed.BlasProvider;
 
 namespace DDLA.Factorizations;
 
@@ -119,7 +119,7 @@ public class LU
 
         L = matrix.Clone();
         MakeTr(L, UpLo.Lower);
-        SetDiag(1.0, L);
+        Set(1.0, L.View.Diag);
 
         U = new(matrix);
         MakeTr(U, UpLo.Upper);

@@ -12,8 +12,6 @@ public interface IOperator
     /// Gets a value indicating whether the operation can be vectorized.
     /// </summary>
     static virtual bool IsVectorizable => false;
-
-    static virtual bool ShouldManualInitialize => false;
 }
 
 /// <summary>

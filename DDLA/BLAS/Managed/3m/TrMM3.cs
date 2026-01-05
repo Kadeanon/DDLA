@@ -10,6 +10,80 @@ namespace DDLA.BLAS.Managed;
 
 public static partial class BlasProvider
 {
+    public static void TrMM3
+        (SideType aSide, UpLo aUplo,
+        TransType aTrans, DiagType aDiag,
+        TransType bTrans,
+        in scalar alpha,
+        in matrix A,
+        in matrix B,
+        in scalar beta,
+        in matrix C)
+    {
+        var (m, n) = GetLengths(C);
+
+        var AEffective = A;
+        var BEffective = B;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            AEffective = A.T;
+            aUplo = Transpose(aUplo);
+        }
+        if (bTrans.HasFlag(TransType.OnlyTrans))
+        {
+            BEffective = B.T;
+        }
+        var k = m;
+        var bUplo = UpLo.Dense;
+        var bDiag = DiagType.NonUnit;
+        if (aSide is SideType.Right)
+        {
+            (AEffective, BEffective) = (B, A);
+            k = n;
+            bUplo = aUplo;
+            bDiag = aDiag;
+            aUplo = UpLo.Dense;
+            aDiag = DiagType.NonUnit;
+        }
+        CheckLengths(AEffective, m, k);
+        CheckLengths(BEffective, k, n);
+
+        if (m == 0 || n == 0) return;
+        CheckLengths(BEffective, k, n);
+
+        Scal(beta, C);
+        if (k == 0) return;
+
+        TrMM3Inner(m, n, k, alpha,
+            aUplo, aDiag, AEffective,
+            bUplo, bDiag, BEffective,
+            beta, C);
+    }
+
+    public static void TrMM3
+        (SideType aSide, UpLo aUplo, DiagType aDiag,
+        in scalar alpha,
+        in matrix A,
+        in matrix B,
+        in scalar beta,
+        in matrix C)
+        => TrMM3(aSide, aUplo,
+            TransType.NoTrans, aDiag,
+            TransType.NoTrans,
+            alpha, A, B, beta, C);
+
+    public static void TrMM3
+        (SideType aSide, UpLo aUplo,
+        in scalar alpha,
+        in matrix A,
+        in matrix B,
+        in scalar beta,
+        in matrix C)
+        => TrMM3(aSide, aUplo,
+            TransType.NoTrans, DiagType.NonUnit,
+            TransType.NoTrans,
+            alpha, A, B, beta, C);
+
     private static void TrMM3Inner(int m, int n, int k, scalar alpha,
         UpLo aUplo, DiagType aDiag, matrix A,
         UpLo bUplo, DiagType bDiag, matrix B,

@@ -1,6 +1,4 @@
-﻿
-
-namespace Tests;
+﻿namespace Tests;
 
 internal static class CreateUtils
 {

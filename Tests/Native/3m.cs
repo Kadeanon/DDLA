@@ -22,7 +22,7 @@ public static partial class BlasProvider
         if (m2 != m) throw new ArgumentException($"Dimensions of matrix A must be match!");
         CheckLengthsAfterTrans(B, bTrans, k, n);
 
-        Source.GeMM(aTrans, bTrans,
+        Blis.GeMM(aTrans, bTrans,
             m, n, k,
             in alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -58,7 +58,7 @@ public static partial class BlasProvider
         if (ma != m)
             throw new ArgumentException($"Dimensions of matrix A must be match!");
 
-        Source.GeMMT(cUplo,
+        Blis.GeMMT(cUplo,
             aTrans,
             bTrans,
             m, k,
@@ -96,7 +96,7 @@ public static partial class BlasProvider
         var aLength = CheckSymmMatLength(A, aUplo);
         if (aExp != aLength)
             throw new ArgumentException($"Dimensions of matrixs must be match!");
-        Source.SyMM(aSide, aUplo, ConjType.NoConj, bTrans,
+        Blis.SyMM(aSide, aUplo, ConjType.NoConj, bTrans,
             m, n,
             in alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -128,7 +128,7 @@ public static partial class BlasProvider
         if (k == 0) return;
         if (ma != m)
             throw new ArgumentException("Dimensions of matrixs A must be match!");
-        Source.SyRk(cUplo,
+        Blis.SyRk(cUplo,
             aTrans,
             m, k,
             in alpha,
@@ -162,7 +162,7 @@ public static partial class BlasProvider
         CheckLengthsAfterTrans(B, bTrans, m, k);
         if (ma != m)
             throw new ArgumentException("Dimensions of matrixs A and B must be match!");
-        Source.SyR2k(cUplo, aTrans, bTrans,
+        Blis.SyR2k(cUplo, aTrans, bTrans,
             m, k,
             in alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -196,7 +196,7 @@ public static partial class BlasProvider
         if (aLength != aExpected)
             throw new ArgumentException("Dimensions of matrixs A must be match!");
 
-        Source.TrMM(sidea, aUplo, aTrans, aDiag,
+        Blis.TrMM(sidea, aUplo, aTrans, aDiag,
             m, n,
             alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -240,7 +240,7 @@ public static partial class BlasProvider
         if (aLength != aExpected)
             throw new ArgumentException("Dimensions of matrixs A must be match!");
 
-        Source.TrMM3(sidea, aUplo, aTrans, aDiag, bTrans,
+        Blis.TrMM3(sidea, aUplo, aTrans, aDiag, bTrans,
             m, n,
             in alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -297,7 +297,7 @@ public static partial class BlasProvider
         var aExpected = aSide == SideType.Left ? m : n;
         if (ShouldCheck && aLength != aExpected)
             throw new ArgumentException("Dimensions of matrixs A must be match!");
-        Source.TrSM(aSide, aUplo, aTrans, aDiag,
+        Blis.TrSM(aSide, aUplo, aTrans, aDiag,
             B.Rows, B.Cols,
             in alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,

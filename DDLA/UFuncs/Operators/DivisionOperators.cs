@@ -5,17 +5,17 @@ using System.Runtime.CompilerServices;
 namespace DDLA.UFuncs.Operators;
 
 public readonly struct DivideOperator<T>
-    : IBinaryOperator<double, double, double>
-    where T : struct, IMultiplyOperators<T, T, T>
+    : IBinaryOperator<T, T, T>
+    where T : struct, IDivisionOperators<T, T, T>
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double Invoke(double x, double y)
+    public T Invoke(T x, T y)
         => x / y;
 
     public static bool IsVectorizable => true;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Vector<double> Invoke(ref readonly Vector<double> x, ref readonly Vector<double> y)
+    public Vector<T> Invoke(ref readonly Vector<T> x, ref readonly Vector<T> y)
         => x / y;
 }
 

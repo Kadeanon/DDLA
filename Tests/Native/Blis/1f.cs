@@ -4,7 +4,7 @@ using DDLA.Misc.Flags;
 
 namespace DDLA.BLAS;
 
-public static partial class Source
+public static partial class Blis
 {
     [DllImport(BlisDLL, EntryPoint = "bli_daxpy2v")]
     public static extern void Axpy2V(

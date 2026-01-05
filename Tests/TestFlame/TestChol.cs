@@ -1,6 +1,10 @@
 ﻿using DDLA.Factorizations;
+using DDLA.Misc;
 
 namespace Tests.TestFlame;
+using Blas = DDLA.BLAS.Managed.BlasProvider;
+using Blis = DDLA.BLAS.BlasProvider;
+
 
 [TestClass]
 public class TestChol
@@ -21,7 +25,29 @@ public class TestChol
 
     [TestMethod]
     public void TestMediumBloCholLower()
-        => TestCholLowerDec(medium, Cholesky.CholeskyLowerBlock);
+        => TestCholLowerDec(medium, CholeskyLowerBlock);
+
+
+    internal static void CholeskyLowerBlock(MatrixView A)
+    {
+        var partA = PartitionGrid.Create
+            (A, 0, 0, Quadrant.TopLeft,
+            out var A00, out var a01, out var A02,
+            out var a10, out var a11, out var a12,
+            out var A20, out var a21, out var A22);
+
+        while (A22.Rows > 0)
+        {
+            var block = Math.Min(Cholesky.BlockSize, A22.Rows);
+            using var partAStep = partA.Step(block, block);
+
+            Cholesky.CholeskyLowerUnblock(a11);
+            Blas.TrSM(SideType.Right, UpLo.Lower, 
+                TransType.OnlyTrans, DiagType.NonUnit,
+                1, a11, a21);
+            Blas.SyRk(UpLo.Lower, TransType.NoTrans, -1, a21, 1, A22);
+        }
+    }
 
     private static void TestCholLowerDec(int m, Action<MatrixView> action, double tol = 1e-10)
     {
@@ -37,7 +63,7 @@ public class TestChol
             CheckForNaN(L);
             action(L);
             CheckForNaN(L);
-            BlasProvider.MakeTr(L, UpLo.Lower);
+            Blas.MakeTr(L, UpLo.Lower);
             var result = L * L.T;
             var diff = orig - result;
             double n1 = diff.Nrm1(),

@@ -1,196 +1,263 @@
 ﻿using scalar = double;
-using vector = DDLA.Core.VectorView;
 using matrix = DDLA.Core.MatrixView;
 using DDLA.Misc.Flags;
 using DDLA.Einsum;
-using DDLA.Utilities;
-using DDLA.Misc.Pools;
 using DDLA.Misc;
 
 namespace DDLA.BLAS.Managed;
 
-public static partial class BlasProvider 
+public static partial class BlasProvider
 {
+    /// <summary>
+    /// If <paramref name="aSide"/> is <see cref="SideType.Left"/>,
+    /// solve Trans(<paramref name="A"/>) * X = alpha * <paramref name="B"/>, 
+    /// and overwrite <paramref name="B"/> with X.
+    /// <br />
+    /// Or If <paramref name="aSide"/> is <see cref="SideType.Right"/>,
+    /// solve X * Trans(<paramref name="A"/>) = alpha * <paramref name="B"/>, 
+    /// and overwrite <paramref name="B"/> with X, 
+    /// </summary>
+    /// <exception cref="ArgumentException"></exception>
 
-    private static void TrSMInner(DiagType unit, 
-        int m, int n, 
-        UpLo aUplo, matrix A, 
-        UpLo bUplo, matrix B, matrix C)
+    public static void TrSM
+        (SideType aSide, UpLo aUplo,
+        TransType aTrans, DiagType aDiag,
+        in scalar alpha,
+        in matrix A,
+        in matrix B)
     {
-        var kernel = new GEMMKernel();
-        var MC = kernel.mc;
-        var NC = kernel.nc;
-        var KC = kernel.kc;
-        var MR = kernel.mr;
-        var NR = kernel.nr;
+        var (m, n) = GetLengths(B);
+        if (m == 0 || n == 0) return;
+        var aLength = CheckSymmMatLength(A, aUplo);
+        var k = aSide == SideType.Left ? m : n;
+        if (aLength != k)
+            throw new ArgumentException("Dimensions of matrixs A must be match!");
 
-        var alpha = 1.0;
+        Scal(alpha, B);
 
-        var shouldTrans =
-            (kernel.preferCol && C.RowStride < C.ColStride) ||
-            (!kernel.preferCol && C.ColStride < C.RowStride);
-        if (shouldTrans)
+        var AEffective = A;
+        var BEffective = B;
+        var outMat = B;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
         {
-            C = C.T;
-            (m, n) = (n, m);
-            (A, B) = (B.T, A.T);
-            (aUplo, bUplo) = (Transpose(bUplo), Transpose(aUplo));
+            AEffective = A.T;
+            aUplo = Transpose(aUplo);
+        }
+        if (outMat.RowStride > outMat.ColStride)
+        {
+            AEffective = AEffective.T;
+            BEffective = BEffective.T;
+            aUplo = Transpose(aUplo);
+            aSide = Transpose(aSide);
         }
 
-        if (aUplo is UpLo.Dense)
+        if(aSide == SideType.Left)
         {
-            if (bUplo == UpLo.Upper)
+            if (aUplo == UpLo.Upper)
             {
-                TrSMRightUpper(alpha, unit, A, B);
+                TrSMLeftUpperBlock(aDiag, AEffective, BEffective);
             }
             else
             {
-                TrSMRightLower(alpha, unit, A, B);
+                TrSMLeftLower(aDiag, AEffective, BEffective);
             }
         }
-        else if (aUplo == UpLo.Lower)
+        else
+            if (aUplo == UpLo.Upper)
         {
-            TrSMLeftLower(alpha, unit, A, B);
+            TrSMRightUpperBlock(aDiag, AEffective, BEffective);
         }
         else
         {
-            TrSMLeftUpper(alpha, unit, A, B);
+            TrSMRightLowerBlock(aDiag, AEffective, BEffective);
         }
     }
 
+    public static void TrSM
+        (SideType aSide, UpLo aUplo,
+        in scalar alpha,
+        in matrix A,
+        in matrix B)
+        => TrSM(aSide, aUplo,
+            TransType.NoTrans, DiagType.NonUnit,
+            alpha, A, B);
+
     #region Left Lower
-    private static void TrSMLeftLower(scalar alpha,
-        DiagType unit, matrix A, matrix B)
+    private static void TrSMLeftLower(DiagType diag, matrix A, matrix B)
     {
         var kernel = new GEMMKernel();
-        var block = kernel.kc;
+        var kc = kernel.kc;
 
-        var partA = PartitionGrid.Create(A, 0, 0, Quadrant.TopLeft,
-            out var A00, out var A01, out var A02,
-            out var A10, out var A11, out var A12,
-            out var A20, out var A21, out var A22);
-        var partB = PartitionVertical.FromTop(B,
-            out var B0,
-            out var B1,
-            out var B2);
-        while (A22.Rows > 0)
+        var partBPanel = PartitionHorizontal
+            .FromLeft(B, out var BX0, out var BX1, out var BX2);
+        while (BX2.Cols > 0)
         {
-            block = Math.Min(block, A22.Rows);
-            using var partAStep = partA.Step(block, block);
-            using var partBStep = partB.Step(block);
+            var block = Math.Min(kc, BX2.Cols);
+            using var partBPanelStep = partBPanel.Step(block);
 
-            A10.Multify(-1, B0, alpha, B1);
-            for (var j = 0; j < B1.Cols; j++)
+            var partA = PartitionGrid.FromTopLeft(A,
+                out var A00, out var A01, out var A02,
+                out var A10, out var A11, out var A12,
+                out var A20, out var A21, out var A22);
+            var partBBlock = PartitionVertical.FromTop(BX1,
+                out var B01,
+                out var B11,
+                out var B21);
+
+            while (B21.Rows > 0)
             {
-                var colB = B1.GetColumn(j);
-                TrSV(UpLo.Lower, TransType.NoTrans, unit,
-                    1.0, A11, colB);
+                block = Math.Min(kc, B21.Rows);
+                using var partBStep = partBBlock.Step(block);
+                using var partAStep = partA.Step(block, block);
+
+                TrSMLeftLowerUnblock(diag, A11, B11);
+                A21.Multify(-1.0, B11, 1.0, B21);
             }
+        }
+    }
+
+    private static void TrSMLeftLowerUnblock(DiagType diag, matrix A, matrix B)
+    {
+        for (var j = 0; j < B.Cols; j++)
+        {
+            var colB = B.GetColumn(j);
+            TrSV(UpLo.Lower, TransType.NoTrans, diag,
+                1.0, A, colB);
         }
     }
     #endregion Left Lower
 
     #region Left Upper
-    private static void TrSMLeftUpper(scalar alpha,
-        DiagType unit, matrix A, matrix B)
+    private static void TrSMLeftUpperBlock(DiagType diag, matrix A, matrix B)
     {
         var kernel = new GEMMKernel();
-        var block = kernel.kc;
+        var kc = kernel.kc;
 
-        var partA = PartitionGrid.FromBottomRight(A,
-            out var A00, out var A01, out var A02,
-            out var A10, out var A11, out var A12,
-            out var A20, out var A21, out var A22);
-        var partB = PartitionVertical.FromBottom(B,
-            out var B0,
-            out var B1,
-            out var B2);
-        while (A00.Rows > 0)
+        var partBPanel = PartitionHorizontal
+            .FromLeft(B, out var BX0, out var BX1, out var BX2);
+        while (BX2.Cols > 0)
         {
-            block = Math.Min(block, A00.Rows);
-            using var partAStep = partA.Step(block, block);
-            using var partBStep = partB.Step(block);
+            var block = Math.Min(kc, BX2.Cols);
+            using var partBPanelStep = partBPanel.Step(block);
 
-            A12.Multify(-1, B2, alpha, B1);
-            for (var j = 0; j < B1.Cols; j++)
+            var partA = PartitionGrid.FromBottomRight(A,
+                out var A00, out var A01, out var A02,
+                out var A10, out var A11, out var A12,
+                out var A20, out var A21, out var A22);
+            var partBBlock = PartitionVertical.FromBottom(BX1,
+                out var B01,
+                out var B11,
+                out var B21);
+
+            while (B01.Rows > 0)
             {
-                var colB = B1.GetColumn(j);
-                TrSV(UpLo.Upper, TransType.NoTrans, unit,
-                    1.0, A11, colB);
+                block = Math.Min(kc, B01.Rows);
+                using var partBStep = partBBlock.Step(block);
+                using var partAStep = partA.Step(block, block);
+
+                TrSMLeftUpperUnblock(diag, A11, B11);
+                A01.Multify(-1.0, B11, 1.0, B01);
             }
+        }
+    }
+
+    private static void TrSMLeftUpperUnblock(DiagType diag, matrix A, matrix B)
+    {
+        for (var j = 0; j < B.Cols; j++)
+        {
+            var colB = B.GetColumn(j);
+            TrSV(UpLo.Upper, TransType.NoTrans, diag,
+                1.0, A, colB);
         }
     }
     #endregion Left Upper
 
     #region Right Lower
-    private static void TrSMRightLower(scalar alpha,
-        DiagType unit, matrix A, matrix B)
+    private static void TrSMRightLowerBlock(DiagType diag, matrix A, matrix B)
     {
         var kernel = new GEMMKernel();
         var kc = kernel.kc;
 
-        var partB = PartitionGrid.FromBottomRight(B,
-            out var B00, out var B01, out var B02,
-            out var B10, out var B11, out var B12,
-            out var B20, out var B21, out var B22);
-        var partA = PartitionHorizontal.FromRight(A,
-            out var A0, out var A1, out var A2);
-        while (B00.Rows > 0)
-        {
-            kc = Math.Min(kc, B00.Rows);
-            using var partBStep = partB.Step(kc, kc);
-            using var partAStep = partA.Step(kc);
+        var partBPanel = PartitionVertical
+            .FromTop(B, out var B0X, out var B1X, out var B2X);
+        while (B2X.Rows > 0)
+        { 
+            var block = Math.Min(kc, B2X.Rows);
+            using var partBPanelStep = partBPanel.Step(block);
 
-            A2.Multify(-1.0, B21, alpha, A1);
-            for (var i = 0; i < A1.Rows; i++)
+            var partA = PartitionGrid.FromBottomRight(A,
+                out var A00, out var A01, out var A02,
+                out var A10, out var A11, out var A12,
+                out var A20, out var A21, out var A22);
+            var partBBlock = PartitionHorizontal.FromRight(B1X,
+                out var B10,
+                out var B11,
+                out var B12);
+
+            while (B10.Cols > 0)
             {
-                var rowA = A1.GetRow(i);
-                TrSV(UpLo.Lower, TransType.OnlyTrans, unit,
-                    1.0, B11, rowA);
+                block = Math.Min(kc, B10.Cols);
+                using var partBStep = partBBlock.Step(block);
+                using var partAStep = partA.Step(block, block);
+
+                TrSMRightLowerUnblock(diag, A11, B11);
+                B11.Multify(-1.0, A10, 1.0, B10);
             }
+        }
+    }
+
+    private static void TrSMRightLowerUnblock(DiagType diag, matrix A, matrix B)
+    {
+        for (var j = 0; j < B.Rows; j++)
+        {
+            var rowB = B.GetRow(j);
+            TrSV(UpLo.Lower, TransType.OnlyTrans, diag,
+                1.0, A, rowB);
         }
     }
     #endregion Right Lower
 
     #region Right Upper
-    private static void TrSMRightUpper(scalar alpha,
-        DiagType unit, matrix A, matrix B)
+    private static void TrSMRightUpperBlock(DiagType diag, matrix A, matrix B)
     {
         var kernel = new GEMMKernel();
-        var n = A.Cols;
-        var mc = kernel.mc;
+        var kc = kernel.kc;
 
-        var partA = PartitionVertical.FromTop(A,
-            out var A0,
-            out var A1,
-            out var A2);
-        while (A2.Rows > 0)
+        var partBPanel = PartitionVertical
+            .FromTop(B, out var B0X, out var B1X, out var B2X);
+        while(B2X.Rows > 0)
         {
-            mc = Math.Min(mc, A2.Rows);
-            using var partAStep = partA.Step(mc);
+            var block = Math.Min(kc, B2X.Rows);
+            using var partBPanelStep = partBPanel.Step(block);
 
-            var kc = kernel.kc;
+            var partA = PartitionGrid.FromTopLeft(A,
+                out var A00, out var A01, out var A02,
+                out var A10, out var A11, out var A12,
+                out var A20, out var A21, out var A22);
+            var partBBlock = PartitionHorizontal.FromLeft(B1X,
+                out var B10,
+                out var B11,
+                out var B12);
 
-            var partB = PartitionGrid.FromTopLeft(B,
-                out var B00, out var B01, out var B02,
-                out var B10, out var B11, out var B12,
-                out var B20, out var B21, out var B22);
-            var partA1 = PartitionHorizontal.FromLeft(A1,
-                out var A10, out var A11, out var A12);
-            while (B22.Rows > 0)
+            while(B12.Cols > 0)
             {
-                kc = Math.Min(kc, B22.Rows);
-                using var partBStep = partB.Step(kc, kc);
-                using var partA1Step = partA1.Step(kc);
+                block = Math.Min(kc, B12.Cols);
+                using var partBStep = partBBlock.Step(block);
+                using var partAStep = partA.Step(block, block);
 
-                A10.Multify(-1.0, B01, alpha, A11);
-                for (var i = 0; i < A11.Rows; i++)
-                {
-                    var rowA = A11.GetRow(i);
-                    TrSV(UpLo.Upper, TransType.OnlyTrans, unit,
-                        1.0, B11, rowA);
-                }
+                TrSMRightUpperUnblock(diag, A11, B11);
+                B11.Multify(-1.0, A12, 1.0, B12);
             }
+        }
+    }
+
+    private static void TrSMRightUpperUnblock(DiagType diag, matrix A, matrix B)
+    {
+        for (var j = 0; j < B.Rows; j++)
+        {
+            var rowB = B.GetRow(j);
+            TrSV(UpLo.Upper, TransType.OnlyTrans, diag,
+                1.0, A, rowB);
         }
     }
     #endregion Right Upper

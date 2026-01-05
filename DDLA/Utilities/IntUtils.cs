@@ -1,6 +1,4 @@
-﻿using DDLA.Utilities;
-
-namespace DDLA.Utilities;
+﻿namespace DDLA.Utilities;
 
 public static class IntUtils
 {

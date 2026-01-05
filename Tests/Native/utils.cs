@@ -106,7 +106,7 @@ public static partial class BlasProvider
     public static void Asum(in vector x,
          out rscalar asum)
     {
-        Source.Asum(
+        Blis.Asum(
             x.Length,
             ref x.GetHeadRef(), x.Stride, out asum);
     }
@@ -114,7 +114,7 @@ public static partial class BlasProvider
     public static rscalar Nrm1(in matrix a, UpLo uplo = UpLo.Dense)
     {
         var (m, n) = CheckUploMatLength(a, uplo);
-        Source.Nrm1(0, 0,
+        Blis.Nrm1(0, 0,
             uplo,
             m, n,
             ref a.GetHeadRef(), a.RowStride, a.ColStride,
@@ -125,7 +125,7 @@ public static partial class BlasProvider
     public static rscalar NrmF(in matrix a, UpLo uplo = UpLo.Dense)
     {
         var (m, n) = CheckUploMatLength(a, uplo);
-        Source.NrmF(0, 0,
+        Blis.NrmF(0, 0,
             uplo,
             m, n,
             ref a.GetHeadRef(), a.RowStride, a.ColStride,
@@ -136,7 +136,7 @@ public static partial class BlasProvider
     public static rscalar NrmInf(in matrix a, UpLo uplo = UpLo.Dense)
     {
         var (m, n) = CheckUploMatLength(a, uplo);
-        Source.NrmInf(0, 0,
+        Blis.NrmInf(0, 0,
             uplo,
             m, n,
             ref a.GetHeadRef(), a.RowStride, a.ColStride,
@@ -146,7 +146,7 @@ public static partial class BlasProvider
 
     public static rscalar Nrm1(in vector a)
     {
-        Source.Nrm1(
+        Blis.Nrm1(
             a.Length,
             ref a.GetHeadRef(), a.Stride,
             out var norm);
@@ -155,7 +155,7 @@ public static partial class BlasProvider
 
     public static rscalar NrmF(in vector a)
     {
-        Source.NrmF(
+        Blis.NrmF(
             a.Length,
             ref a.GetHeadRef(), a.Stride,
             out var norm);
@@ -164,7 +164,7 @@ public static partial class BlasProvider
 
     public static rscalar NrmInf(in vector a)
     {
-        Source.NrmInf(
+        Blis.NrmInf(
             a.Length,
             ref a.GetHeadRef(), a.Stride,
             out var norm);
@@ -174,7 +174,7 @@ public static partial class BlasProvider
     public static void MakeSy(in matrix a, UpLo uplo = UpLo.Lower)
     {
         int m = CheckSymmMatLength(a, uplo);
-        Source.MkSym(uplo,
+        Blis.MkSym(uplo,
             m,
             ref a.GetHeadRef(), a.RowStride, a.ColStride);
     }
@@ -182,28 +182,28 @@ public static partial class BlasProvider
     public static void MakeTr(in matrix a, UpLo uplo = UpLo.Lower)
     {
         int m = CheckSymmMatLength(a, uplo);
-        Source.MkTri(uplo,
+        Blis.MkTri(uplo,
             m,
             ref a.GetHeadRef(), a.RowStride, a.ColStride);
     }
 
     public static void Rand(in vector x)
     {
-        Source.Rand(x.Length, ref x.GetHeadRef(), x.Stride);
+        Blis.Rand(x.Length, ref x.GetHeadRef(), x.Stride);
     }
 
     public static void Rand(in matrix a, UpLo uplo = UpLo.Dense)
     {
         var (m, n) = CheckUploMatLength(a, uplo);
-        Source.Rand(0, 
+        Blis.Rand(0, 
             uplo,
             m, n,
             ref a.GetHeadRef(), a.RowStride, a.ColStride);
     }
 
-    public static void Sumsq(in vector x, ref rscalar sumsq, ref rscalar scale)
+    public static void SumSq(in vector x, ref rscalar sumsq, ref rscalar scale)
     {
-        Source.SumSq(x.Length, 
+        Blis.SumSq(x.Length, 
             ref x.GetHeadRef(), x.Stride,
             ref sumsq, ref scale);
     }
@@ -212,7 +212,7 @@ public static partial class BlasProvider
     {
         int length = CheckLength(x, y);
         bool eq = false;
-        Source.Eq(ConjType.NoConj,
+        Blis.Eq(ConjType.NoConj,
             length,
             ref x.GetHeadRef(), x.Stride,
             ref y.GetHeadRef(), y.Stride,
@@ -225,7 +225,7 @@ public static partial class BlasProvider
     {
         var (m, n) = CheckLength(a, aTrans, b);
         bool eq = false;
-        Source.Eq(0, aDiag, aUpLo, aTrans,
+        Blis.Eq(0, aDiag, aUpLo, aTrans,
             m, n,
             ref a.GetHeadRef(), a.RowStride, a.ColStride,
             ref b.GetHeadRef(), b.RowStride, b.ColStride,

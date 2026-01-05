@@ -1,4 +1,4 @@
-<Project Sdk="MSTest.Sdk/3.6.1">
+﻿<Project Sdk="MSTest.Sdk/3.6.1">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -12,4 +12,10 @@
     <ProjectReference Include="..\DDLA\DDLA.csproj" />
   </ItemGroup>
 
+
+	<ItemGroup>
+		<None Update="Native\Blis\*.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 </Project>

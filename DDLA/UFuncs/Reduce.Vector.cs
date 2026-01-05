@@ -106,6 +106,16 @@ public static partial class UFunc
     /// return max(trans(x))
     /// </summary>
     public static double Max<TTranspose>(VectorView x,
+        TTranspose transpose, ref MaxAggregationOperator<double> reducer)
+        where TTranspose : struct, IUnaryOperator<double, double>
+        => Reduce<TTranspose,
+            MaxAggregationOperator<double>,
+            double, double>(x, transpose, ref reducer);
+
+    /// <summary>
+    /// return max(trans(x))
+    /// </summary>
+    public static double Max<TTranspose>(VectorView x,
         ref MaxAggregationOperator<double> reducer)
         where TTranspose : struct, IUnaryOperator<double, double>
         => Reduce<TTranspose,
@@ -120,6 +130,16 @@ public static partial class UFunc
         => Reduce<TTranspose,
             MaxAggregationOperator<double>,
             double, double>(x);
+
+    /// <summary>
+    /// return maxnumber(trans(x))
+    /// </summary>
+    public static double MaxNumber<TTranspose>(VectorView x,
+        TTranspose transpose, ref MaxNumberAggregationOperator<double> reducer)
+        where TTranspose : struct, IUnaryOperator<double, double>
+        => Reduce<TTranspose,
+            MaxNumberAggregationOperator<double>,
+            double, double>(x, transpose, ref reducer);
 
     /// <summary>
     /// return maxnumber(trans(x))
@@ -144,6 +164,16 @@ public static partial class UFunc
     /// return min(trans(x))
     /// </summary>
     public static double Min<TTranspose>(VectorView x,
+        TTranspose transpose, ref MinAggregationOperator<double> reducer)
+        where TTranspose : struct, IUnaryOperator<double, double>
+        => Reduce<TTranspose,
+            MinAggregationOperator<double>,
+            double, double>(x, transpose, ref reducer);
+
+    /// <summary>
+    /// return min(trans(x))
+    /// </summary>
+    public static double Min<TTranspose>(VectorView x,
         ref MinAggregationOperator<double> reducer)
         where TTranspose : struct, IUnaryOperator<double, double>
         => Reduce<TTranspose,
@@ -158,6 +188,16 @@ public static partial class UFunc
         => Reduce<TTranspose,
             MinAggregationOperator<double>,
             double, double>(x);
+
+    /// <summary>
+    /// return minnumber(trans(x))
+    /// </summary>
+    public static double MinNumber<TTranspose>(VectorView x,
+        TTranspose transpose, ref MinNumberAggregationOperator<double> reducer)
+        where TTranspose : struct, IUnaryOperator<double, double>
+        => Reduce<TTranspose,
+            MinNumberAggregationOperator<double>,
+            double, double>(x, transpose, ref reducer);
 
     /// <summary>
     /// return minnumber(trans(x))
@@ -182,6 +222,16 @@ public static partial class UFunc
     /// return sum(trans(x))
     /// </summary>
     public static double Sum<TTranspose>(VectorView x,
+        TTranspose transpose, ref SumOperator<double> reducer)
+        where TTranspose : struct, IUnaryOperator<double, double>
+        => Reduce<TTranspose,
+            SumOperator<double>,
+            double, double>(x, transpose, ref reducer);
+
+    /// <summary>
+    /// return sum(trans(x))
+    /// </summary>
+    public static double Sum<TTranspose>(VectorView x,
         ref SumOperator<double> reducer)
         where TTranspose : struct, IUnaryOperator<double, double>
         => Reduce<TTranspose,
@@ -196,6 +246,16 @@ public static partial class UFunc
         => Reduce<TTranspose,
             SumOperator<double>,
             double, double>(x);
+
+    /// <summary>
+    /// return product(trans(x))
+    /// </summary>
+    public static double Product<TTranspose>(VectorView x,
+        TTranspose transpose, ref ProductOperator<double> reducer)
+        where TTranspose : struct, IUnaryOperator<double, double>
+        => Reduce<TTranspose,
+            ProductOperator<double>,
+            double, double>(x, transpose, ref reducer);
 
     /// <summary>
     /// return product(trans(x))
@@ -228,7 +288,7 @@ public static partial class UFunc
             if (indice.Length == 0)
                 return;
             else if (indice.Stride == 1 && Vector.IsHardwareAccelerated
-                && Vector<TOut>.IsSupported && TReducer.IsVectorizable)
+                && TTranspose.IsVectorizable && TReducer.IsVectorizable)
                 Reduce_Kernel_Vector<TTranspose, TReducer, TMid, TOut>(indice.Length,
                     ref xHead, transposer, ref reducer);
             else
@@ -404,8 +464,7 @@ public static partial class UFunc
                 return;
             else if (indice.AStride == 1 && indice.BStride == 1 &&
                 Vector.IsHardwareAccelerated &&
-                Vector<TOut>.IsSupported &&
-                TReducer.IsVectorizable)
+                TZipper.IsVectorizable && TReducer.IsVectorizable)
                 ZipReduce_Kernel_Vector<TZipper, TReducer, TMid, TOut>(
                     indice.Length, ref xHead, ref yHead, zipper, ref reducer);
             else
@@ -524,35 +583,41 @@ public static partial class UFunc
         }
     }
 
+    public static double ZipSum<TZipper>(VectorView x, VectorView y, 
+        ref SumOperator<double> reducer)
+        where TZipper : struct, IBinaryOperator<double, double, double>
+        => ZipReduce<TZipper, SumOperator<double>>(x, y, new(), ref reducer);
+
     public static double ZipSum<TZipper>(VectorView x, VectorView y)
         where TZipper : struct, IBinaryOperator<double, double, double>
         => ZipReduce<TZipper, SumOperator<double>>(x, y);
 
-    public static double ZipSum<TZipper>(VectorView x, VectorView y, ref SumOperator<double> reducer)
+    public static double ZipProduct<TZipper>(VectorView x, VectorView y, 
+        ref ProductOperator<double> reducer)
         where TZipper : struct, IBinaryOperator<double, double, double>
-        => ZipReduce<TZipper, SumOperator<double>>(x, y, new(), ref reducer);
+        => ZipReduce<TZipper, ProductOperator<double>>(x, y, new(), ref reducer);
 
     public static double ZipProduct<TZipper>(VectorView x, VectorView y)
         where TZipper : struct, IBinaryOperator<double, double, double>
         => ZipReduce<TZipper, ProductOperator<double>>(x, y);
 
-    public static double ZipProduct<TZipper>(VectorView x, VectorView y, ref ProductOperator<double> reducer)
+    public static double ZipMax<TZipper>(VectorView x, VectorView y, 
+        ref MaxAggregationOperator<double> reducer)
         where TZipper : struct, IBinaryOperator<double, double, double>
-        => ZipReduce<TZipper, ProductOperator<double>>(x, y, new(), ref reducer);
+        => ZipReduce<TZipper, MaxAggregationOperator<double>>(
+            x, y, new(), ref reducer);
 
     public static double ZipMax<TZipper>(VectorView x, VectorView y)
         where TZipper : struct, IBinaryOperator<double, double, double>
         => ZipReduce<TZipper, MaxAggregationOperator<double>>(x, y);
 
-    public static double ZipMax<TZipper>(VectorView x, VectorView y, ref MaxAggregationOperator<double> reducer)
+    public static double ZipMin<TZipper>(VectorView x, VectorView y, 
+        ref MinAggregationOperator<double> reducer)
         where TZipper : struct, IBinaryOperator<double, double, double>
-        => ZipReduce<TZipper, MaxAggregationOperator<double>>(x, y, new(), ref reducer);
-
+        => ZipReduce<TZipper, MinAggregationOperator<double>>(
+            x, y, new(), ref reducer);
+    
     public static double ZipMin<TZipper>(VectorView x, VectorView y)
         where TZipper : struct, IBinaryOperator<double, double, double>
         => ZipReduce<TZipper, MinAggregationOperator<double>>(x, y);
-
-    public static double ZipMin<TZipper>(VectorView x, VectorView y, ref MinAggregationOperator<double> reducer)
-        where TZipper : struct, IBinaryOperator<double, double, double>
-        => ZipReduce<TZipper, MinAggregationOperator<double>>(x, y, new(), ref reducer);
 }

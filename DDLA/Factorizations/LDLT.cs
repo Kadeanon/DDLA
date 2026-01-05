@@ -2,7 +2,7 @@
 using DDLA.Misc;
 using DDLA.Misc.Flags;
 using System.Buffers;
-using static DDLA.BLAS.BlasProvider;
+using static DDLA.BLAS.Managed.BlasProvider;
 
 namespace DDLA.Factorizations;
 
@@ -132,7 +132,7 @@ public class LDLT
         D = Matrix.Diagonals(matrix.Diag);
         L = new(matrix);
         MakeTr(L, uplo);
-        SetDiag(1.0, L);
+        Set(1.0, L.View.Diag);
         deconstructed = true;
     }
 

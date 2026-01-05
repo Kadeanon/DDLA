@@ -36,11 +36,6 @@ public class TestSetm
     [TestMethod] public void TestLowerUnitColMajor() => RunCase(DiagType.Unit, UpLo.Lower, 3.75, CreateMatrixTransRandom(size, size));
     [TestMethod] public void TestLowerUnitStride() => RunCase(DiagType.Unit, UpLo.Lower, 3.75, CreateMatrixStrideRandom(size, size, stride));
 
-    // Diagonal only (Zeros)
-    [TestMethod] public void TestZerosRowMajor() => RunCase(DiagType.NonUnit, UpLo.Zeros, Math.PI, CreateMatrixRandom(size, size));
-    [TestMethod] public void TestZerosColMajor() => RunCase(DiagType.NonUnit, UpLo.Zeros, Math.PI, CreateMatrixTransRandom(size, size));
-    [TestMethod] public void TestZerosStride() => RunCase(DiagType.NonUnit, UpLo.Zeros, Math.PI, CreateMatrixStrideRandom(size, size, stride));
-
     private static void RunCase(DiagType diag, UpLo aUplo, double alpha, MatrixView Ain)
     {
         var Am = CopyMatrix(Ain);

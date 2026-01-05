@@ -128,7 +128,7 @@ public static partial class BlasProvider
         {
             UpLo.Upper => UpLo.Lower,
             UpLo.Lower => UpLo.Upper,
-            _ => upLo
+            UpLo.Dense => UpLo.Dense,
         };
 
     public static TransType Transpose(TransType trans)
@@ -136,124 +136,287 @@ public static partial class BlasProvider
         trans.RemoveFlags(TransType.OnlyTrans) : 
         trans.CombineFlags(TransType.OnlyTrans);
 
+    public static SideType Transpose(SideType side)
+        => side switch
+        {
+            SideType.Left => SideType.Right,
+            SideType.Right => SideType.Left,
+        };
+
     public static void Asum(in vector x, out rscalar asum)
-        => asum = UFunc.Sum<AbsOperator<double>>(x);
+    {
+        asum = 0.0;
+        foreach(var val in x)
+        {
+            var abs = Math.Abs(val);
+            if(double.IsNaN(abs) || double.IsInfinity(abs))
+            {
+                asum = abs;
+                return;
+            }
+            asum += abs;
+        }
+    }
 
     public static rscalar Nrm1(in matrix A, UpLo uplo = UpLo.Dense)
     {
-        var (m, n) = CheckUploMatLength(A, uplo);
-        Source.Nrm1(0, 0,
-            uplo,
-            m, n,
-            ref A.GetHeadRef(), A.RowStride, A.ColStride,
-            out var norm);
-        return norm;
+        var (m, n) = GetLengths(A);
+
+        rscalar max = 0.0;
+
+        if (uplo == UpLo.Dense)
+        {
+            for (var j = 0; j < n; j++)
+                max = Math.Max(max, Nrm1(A.GetColUncheck(j))); 
+            return max;
+        }
+
+        for (var j = 0; j < n; j++)
+        {
+            rscalar colsum = 0.0;
+
+            if (uplo == UpLo.Upper)
+            {
+                // upper: i <= j
+                var iMax = Math.Min(m - 1, j);
+                for (var i = 0; i <= iMax; i++)
+                    colsum += Math.Abs(A[i, j]);
+            }
+            else // Lower
+            {
+                // lower: i >= j
+                var iMin = Math.Max(0, j);
+                for (var i = iMin; i < m; i++)
+                    colsum += Math.Abs(A[i, j]);
+            }
+
+            if (colsum > max) max = colsum;
+        }
+
+        return max;
     }
 
     public static rscalar NrmF(in matrix A, UpLo uplo = UpLo.Dense)
     {
-        var (m, n) = CheckUploMatLength(A, uplo);
-        Source.NrmF(0, 0,
-            uplo,
-            m, n,
-            ref A.GetHeadRef(), A.RowStride, A.ColStride,
-            out var norm);
-        return norm;
+        rscalar scale = 0.0;
+        rscalar sumsq = 1.0;
+        var AEffective = A;
+        if (A.RowStride < A.ColStride)
+        {
+            AEffective = AEffective.T;
+            uplo = Transpose(uplo);
+        }
+        var (m, _) = GetLengths(AEffective);
+        if (uplo == UpLo.Dense)
+        {
+            for (var i = 0; i < m; i++)
+            SumSq(AEffective.GetRowUncheck(i), ref sumsq, ref scale);
+        }
+        else if (uplo == UpLo.Upper)
+        {
+            var minDim = AEffective.MinDim;
+            for (var i = 0; i < minDim; i++)
+                SumSq(AEffective.SliceRowUncheck(i, i), ref sumsq, ref scale);
+        }
+        else // if (uplo == UpLo.Upper)
+        {
+            var minDim = AEffective.MinDim;
+            var i = 0;
+            for (; i < minDim; i++)
+                SumSq(AEffective.SliceRowUncheck(i, 0, i + 1), ref sumsq, ref scale);
+            for (; i < m; i++)
+                SumSq(AEffective.GetRowUncheck(i), ref sumsq, ref scale);
+        }
+        return (scale == 0.0) ? 0.0 : scale * Math.Sqrt(sumsq);
     }
 
     public static rscalar NrmInf(in matrix A, UpLo uplo = UpLo.Dense)
     {
-        var (m, n) = CheckUploMatLength(A, uplo);
-        Source.NrmInf(0, 0,
-            uplo,
-            m, n,
-            ref A.GetHeadRef(), A.RowStride, A.ColStride,
-            out var norm);
-        return norm;
+        return Nrm1(A.T, Transpose(uplo));
     }
 
     public static rscalar Nrm1(in vector x)
     {
-        Source.Nrm1(
-            x.Length,
-            ref x.GetHeadRef(), x.Stride,
-            out var norm);
-        return norm;
+        Asum(x, out var result);
+        return result;
     }
 
     public static rscalar NrmF(in vector x)
     {
-        Source.NrmF(
-            x.Length,
-            ref x.GetHeadRef(), x.Stride,
-            out var norm);
-        return norm;
+        rscalar scale = 0.0;
+        rscalar sumsq = 1.0;
+        SumSq(x, ref sumsq, ref scale);
+        return scale * Math.Sqrt(sumsq);
     }
 
     public static rscalar NrmInf(in vector x)
     {
-        Source.NrmInf(
-            x.Length,
-            ref x.GetHeadRef(), x.Stride,
-            out var norm);
-        return norm;
+        var max = 0.0;
+        foreach (var val in x)
+        {
+            var abs = Math.Abs(val);
+            if (double.IsNaN(abs) || double.IsInfinity(abs))
+            {
+                max = abs;
+                break;
+            }
+            max = Math.Max(abs, max);
+        }
+        return max;
     }
 
     public static void MakeSy(in matrix A, UpLo uplo = UpLo.Lower)
     {
-        int m = CheckSymmMatLength(A, uplo);
+        CheckSymmMatLength(A, uplo);
         Copy(DiagType.Unit, Transpose(uplo), TransType.OnlyTrans, A.T, A.T);
     }
 
     public static void MakeTr(in matrix A, UpLo uplo = UpLo.Lower)
     {
-        int m = CheckSymmMatLength(A, uplo);
+        CheckSymmMatLength(A, uplo);
         Set(DiagType.Unit, Transpose(uplo), 0.0, A);
     }
 
-    public static void Rand(in vector x)
+    public static void Rand(in vector x, Random? random = null)
     {
-        Source.Rand(x.Length, ref x.GetHeadRef(), x.Stride);
+        if (x.Length == 0) return;
+        random ??= new Random();
+        foreach (ref var val in x)
+            val = random.NextDouble();
     }
 
-    public static void Rand(in matrix A, UpLo uplo = UpLo.Dense)
+    public static void Rand(in matrix A, UpLo uplo = UpLo.Dense, 
+        Random? random = null)
     {
-        var (m, n) = CheckUploMatLength(A, uplo);
-        Source.Rand(0,
-            uplo,
-            m, n,
-            ref A.GetHeadRef(), A.RowStride, A.ColStride);
+        var AEffective = A;
+        var (m, _) = GetLengths(AEffective);
+        if (A.RowStride < A.ColStride)
+        {
+            AEffective = AEffective.T;
+            uplo = Transpose(uplo);
+        }
+        if (uplo == UpLo.Dense)
+        {
+            for (var i = 0; i < m; i++)
+                Rand(AEffective.GetRowUncheck(i), random);
+        }
+        else if(uplo == UpLo.Upper)
+        {
+            var minDim = AEffective.MinDim;
+            for (var i = 0; i < minDim; i++)
+                Rand(AEffective.SliceRowUncheck(i, i), random);
+        }
+        else // if (uplo == UpLo.Upper)
+        {
+            var minDim = AEffective.MinDim;
+            var i = 0;
+            for (; i < minDim; i++)
+                Rand(AEffective.SliceRowUncheck(i, 0, i), random);
+            for (; i < m; i++)
+                Rand(AEffective.GetRowUncheck(i), random);
+        }
     }
 
-    public static void Sumsq(in vector x, ref rscalar sumsq, ref rscalar scale)
+    public static void SumSq(in vector x, ref rscalar sumsq, ref rscalar scale)
     {
-        Source.SumSq(x.Length,
-            ref x.GetHeadRef(), x.Stride,
-            ref sumsq, ref scale);
+        if (x.Length == 0) return;
+        foreach (ref var val in x)
+        {
+            rscalar abs = Math.Abs(val);
+
+            if (double.IsNaN(abs) || double.IsInfinity(abs))
+            {
+                sumsq = abs;
+                scale = 1.0;
+                break;
+            }
+
+            if (abs > 0.0)
+            {
+                if (scale < abs)
+                {
+                    var r = scale / abs;   
+                    sumsq = 1.0 + sumsq * r * r;
+                    scale = abs;
+                }
+                else
+                {
+                    var r = abs / scale;  
+                    sumsq += r * r;
+                }
+            }
+        }
     }
 
-    public static bool Equals(in vector x, in vector y)
+    public static bool Equals(in vector x, in vector y, double eps = 2e-16)
     {
         int length = CheckLength(x, y);
         bool eq = false;
-        Source.Eq(ConjType.NoConj,
-            length,
-            ref x.GetHeadRef(), x.Stride,
-            ref y.GetHeadRef(), y.Stride,
-            ref eq);
+        // TODO: use SIMD
+        for(var i = 0; i < length; i++)
+        {
+            eq &= Math.Abs(x[i] - y[i]) < eps;
+        }
         return eq;
     }
 
-    public static bool Equals(DiagType aDiag, UpLo aUpLo, TransType aTrans,
-        in matrix A, in matrix B)
+    public static bool Equals(DiagType aDiag, UpLo aUplo, TransType aTrans,
+        in matrix A, in matrix B, double eps = 2e-16)
     {
         var (m, n) = CheckLength(A, aTrans, B);
-        bool eq = false;
-        Source.Eq(0, aDiag, aUpLo, aTrans,
-            m, n,
-            ref A.GetHeadRef(), A.RowStride, A.ColStride,
-            ref B.GetHeadRef(), B.RowStride, B.ColStride,
-            ref eq);
-        return eq;
+        if (m == 0 || n == 0) return true;
+        var AEffective = A;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            aUplo = Transpose(aUplo);
+            AEffective = A.T;
+        }
+        var BEffective = B;
+        if (B.RowStride < B.ColStride)
+        {
+            AEffective = AEffective.T;
+            BEffective = BEffective.T;
+            aUplo = Transpose(aUplo);
+        }
+        (m, n) = GetLengths(AEffective);
+
+        if (aUplo is UpLo.Dense)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                var rowA = AEffective.GetRowUncheck(i);
+                var rowB = BEffective.GetRowUncheck(i);
+                if (!Equals(rowA, rowB, eps)) return false;
+            }
+        }
+        else if (aUplo is UpLo.Upper)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                var start = i;
+                if (aDiag is DiagType.Unit)
+                    start++;
+                start = Math.Max(start, 0);
+                if (start >= n)
+                    break;
+                var rowA = AEffective.GetRowUncheck(i);
+                var rowB = BEffective.GetRowUncheck(i);
+                if (!Equals(rowA, rowB, eps)) return false;
+            }
+        }
+        else // if (aUplo is UpLo.Lower)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                var diagBound = aDiag is DiagType.Unit ? i : i + 1;
+                var end = Math.Min(diagBound, n);
+                if (end <= 0)
+                    continue;
+                var rowA = AEffective.SliceRowUncheck(i, 0, end);
+                var rowB = BEffective.SliceRowUncheck(i, 0, end);
+                if (!Equals(rowA, rowB, eps)) return false;
+            }
+        }
+        return true;
     }
 }

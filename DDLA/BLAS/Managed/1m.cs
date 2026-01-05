@@ -56,7 +56,7 @@ public static partial class BlasProvider
             AEffective = A.T;
         }
         var BEffective = B;
-        var invoker = UFunc.OrDefault<AddOperator<scalar>>(null);
+        var invoker = new AddOperator<scalar>();
         if (B.RowStride < B.ColStride)
         {
             AEffective = AEffective.T;
@@ -90,10 +90,8 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = i + 1;
-                    if (aDiag is DiagType.Unit)
-                        end--;
-                    end = Math.Min(end, n);
+                    var diagBound = aDiag is DiagType.Unit ? i : i + 1;
+                    var end = Math.Min(diagBound, n);
                     if (end <= 0)
                         continue;
                     var rowA = AEffective.SliceRowUncheck(i, 0, end);
@@ -164,7 +162,7 @@ public static partial class BlasProvider
             AEffective = A.T;
         }
         var BEffective = B;
-        var invoker = UFunc.OrDefault<MultiplyAddOperator<scalar>>(null);
+        var invoker = new MultiplyAddOperator<scalar>();
         if (B.RowStride < B.ColStride)
         {
             AEffective = AEffective.T;
@@ -198,10 +196,8 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = i + 1;
-                    if (aDiag is DiagType.Unit)
-                        end--;
-                    end = Math.Min(end, n);
+                    var diagBound = aDiag is DiagType.Unit ? i : i + 1;
+                    var end = Math.Min(diagBound, n);
                     if (end <= 0)
                         continue;
                     var rowA = AEffective.SliceRowUncheck(i, 0, end);
@@ -273,7 +269,7 @@ public static partial class BlasProvider
             AEffective = A.T;
         }
         var BEffective = B;
-        var invoker = UFunc.OrDefault<IdentityOperator<scalar>>(null);
+        var invoker = new IdentityOperator<scalar>();
         if (B.RowStride < B.ColStride)
         {
             AEffective = AEffective.T;
@@ -307,10 +303,8 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = i + 1;
-                    if (aDiag is DiagType.Unit)
-                        end--;
-                    end = Math.Min(end, n);
+                    var diagBound = aDiag is DiagType.Unit ? i : i + 1;
+                    var end = Math.Min(diagBound, n);
                     if (end <= 0)
                         continue;
                     var rowA = AEffective.SliceRowUncheck(i, 0, end);
@@ -402,7 +396,7 @@ public static partial class BlasProvider
         if (m == 0 || n == 0) return;
 
         var AEffective = A;
-        var invoker = UFunc.OrDefault<MultiplyOperator<scalar>>(null);
+        var invoker = new MultiplyOperator<scalar>();
         if (A.RowStride < A.ColStride)
         {
             aUplo = Transpose(aUplo);
@@ -508,7 +502,7 @@ public static partial class BlasProvider
             AEffective = A.T;
         }
         var BEffective = B;
-        var invoker = UFunc.OrDefault<MultiplyOperator<scalar>>(null);
+        var invoker = new MultiplyOperator<scalar>();
         if (B.RowStride < B.ColStride)
         {
             AEffective = AEffective.T;
@@ -542,10 +536,8 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = i + 1;
-                    if (aDiag is DiagType.Unit)
-                        end--;
-                    end = Math.Min(end, n);
+                    var diagBound = aDiag is DiagType.Unit ? i : i + 1;
+                    var end = Math.Min(diagBound, n);
                     if (end <= 0)
                         continue;
                     var rowA = AEffective.SliceRowUncheck(i, 0, end);
@@ -589,15 +581,13 @@ public static partial class BlasProvider
     /// </param>
     /// <param name="alpha">The value assigned to <paramref name="A"/>.</param>
     /// <param name="A">Output matrix A.</param>
-    public static void Set
-        (DiagType aDiag, UpLo aUplo, scalar alpha, in matrix A)
+    public static void Set(DiagType aDiag, UpLo aUplo, scalar alpha, in matrix A)
     {
         var (m, n) = GetLengths(A);
         if (m == 0 || n == 0) return;
 
-
         var AEffective = A;
-        var invoker = UFunc.OrDefault<IdentityOperator<scalar>>(null);
+        var invoker = new IdentityOperator<scalar>();
         if (A.RowStride < A.ColStride)
         {
             aUplo = Transpose(aUplo);
@@ -628,11 +618,8 @@ public static partial class BlasProvider
         {
             for (int i = 0; i < m; i++)
             {
-                var end = Math.Min(n, i + 1);
-                if (aDiag is DiagType.Unit)
-                {
-                    end--;
-                }
+                var diagBound = aDiag is DiagType.Unit ? i : i + 1;
+                var end = Math.Min(diagBound, n);
                 if (end <= 0)
                     continue;
                 var rowA = AEffective.SliceRowUncheck(i, 0, end);
@@ -699,7 +686,7 @@ public static partial class BlasProvider
             AEffective = A.T;
         }
         var BEffective = B;
-        var invoker = UFunc.OrDefault<ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>>(null);
+        var invoker = new ReversedOp<SubtractOperator<scalar>, scalar, scalar, scalar>();
         if (B.RowStride < B.ColStride)
         {
             AEffective = AEffective.T;
@@ -733,10 +720,8 @@ public static partial class BlasProvider
             {
                 for (int i = 0; i < m; i++)
                 {
-                    var end = i + 1;
-                    if (aDiag is DiagType.Unit)
-                        end--;
-                    end = Math.Min(end, n);
+                    var diagBound = aDiag is DiagType.Unit ? i : i + 1;
+                    var end = Math.Min(diagBound, n);
                     if (end <= 0)
                         continue;
                     var rowA = AEffective.SliceRowUncheck(i, 0, end);

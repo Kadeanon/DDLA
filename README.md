@@ -1,6 +1,6 @@
 # DDLA - Double Dense Linear Algebra
 
-DDLA is a CPU double-precision dense linear algebra library written in C#, focused on numerical correctness, computational performance, and scalability.
+DDLA is a CPU double-precision dense linear algebra library written in pure C#, focused on numerical correctness, computational performance, and scalability.
 
 ## Features
 
@@ -8,7 +8,7 @@ DDLA is a CPU double-precision dense linear algebra library written in C#, focus
 
 - **Flexible memory layout**: Uses a managed array–backed, freely strided layout with internal optimizations for classic row-major and column-major storage. This makes it easy to interoperate with other array-based linear algebra code.
 - **Layered architecture**: Follows the classic BLAS structure, with a set of pluggable execution kernels as the driver layer, and higher-level matrix algorithms built on top.
-- **Algorithm-oriented value types**: Algorithmic kernels operate on small, immutable struct views layered beneath the top-level container types. These share the same logical representation while avoiding extra heap allocations and reducing GC pressure.
+- **Algorithm-oriented struct type**: Algorithmic kernels operate on small, immutable struct views layered beneath the top-level container types. These share the same logical representation while avoiding extra heap allocations and reducing GC pressure.
 - **SIMD and parallel acceleration**: Performance-critical operations make heavy use of `System.Numerics.Vector<double>` for SIMD vectorization, and top-level BLAS operations are parallelized using the Task Parallel Library (TPL).
 
 ### Data Structures

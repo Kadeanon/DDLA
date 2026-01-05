@@ -1,16 +1,66 @@
 ﻿using scalar = double;
-using vector = DDLA.Core.VectorView;
 using matrix = DDLA.Core.MatrixView;
 using DDLA.Misc.Flags;
 using DDLA.Einsum;
-using DDLA.Utilities;
-using DDLA.Misc.Pools;
 using DDLA.Misc;
 
 namespace DDLA.BLAS.Managed;
 
 public static partial class BlasProvider 
 {
+    public static void TrMM
+        (SideType aSide, UpLo aUplo,
+        TransType aTrans, DiagType aDiag,
+        in scalar alpha,
+        in matrix A,
+        in matrix B)
+    {
+        var (m, n) = GetLengths(B);
+        if (m == 0 || n == 0) return;
+        var aLength = CheckSymmMatLength(A, aUplo);
+        var k = aSide == SideType.Left ? m : n;
+        if (aLength != k)
+            throw new ArgumentException("Dimensions of matrixs A must be match!");
+
+        var bUplo = UpLo.Dense;
+        var AEffective = A;
+        var BEffective = B;
+        if (aTrans.HasFlag(TransType.OnlyTrans))
+        {
+            AEffective = A.T;
+            aUplo = Transpose(aUplo);
+        }
+        if (aSide is SideType.Right)
+        {
+            (AEffective, BEffective) = (B, A);
+            bUplo = aUplo;
+            aUplo = UpLo.Dense;
+        }
+        TrMMInner(aDiag,
+            m, n,
+            alpha,
+            aUplo, AEffective,
+            bUplo, BEffective, B);
+    }
+
+    public static void TrMM
+        (SideType aSide, UpLo aUplo,
+        DiagType aDiag,
+        in scalar alpha,
+        in matrix A,
+        in matrix B)
+        => TrMM(aSide, aUplo,
+            TransType.NoTrans, aDiag,
+            alpha, A, B);
+
+    public static void TrMM
+        (SideType aSide, UpLo aUplo,
+        in scalar alpha,
+        in matrix A,
+        in matrix B)
+        => TrMM(aSide, aUplo,
+            TransType.NoTrans, DiagType.NonUnit,
+            alpha, A, B);
 
     private static void TrMMInner(DiagType unit, 
         int m, int n, scalar alpha,

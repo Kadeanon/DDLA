@@ -9,8 +9,6 @@ public struct DoubleInvertOperator : IUnaryOperator<double, double>
 
     public Vector<double> oneVec;
 
-    static bool IOperator.ShouldManualInitialize => true;
-
     public DoubleInvertOperator()
     {
         one = 1;

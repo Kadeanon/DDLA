@@ -1,7 +1,7 @@
 ﻿// These algorithms are ported from LibFlame.
 // https://github.com/flame/libflame
 
-using DDLA.BLAS;
+using DDLA.BLAS.Managed;
 using DDLA.Core;
 using DDLA.Misc.Flags;
 using DDLA.Misc.Pools;

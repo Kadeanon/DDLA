@@ -14,7 +14,7 @@ public static partial class BlasProvider
     {
         int length = CheckLength(x, y, z);
         if (length == 0) return;
-        Source.Axpy2V(ConjType.NoConj, ConjType.NoConj,
+        Blis.Axpy2V(ConjType.NoConj, ConjType.NoConj,
             length, in alphax, in alphay,
             ref x.GetHeadRef(), x.Stride,
             ref y.GetHeadRef(), y.Stride,
@@ -25,7 +25,7 @@ public static partial class BlasProvider
     {
         int length = CheckLength(x, y, z);
         if (length == 0) return;
-        Source.DotAxpyV(ConjType.NoConj, ConjType.NoConj, ConjType.NoConj,
+        Blis.DotAxpyV(ConjType.NoConj, ConjType.NoConj, ConjType.NoConj,
             length, in alpha,
             ref x.GetHeadRef(), x.Stride,
             ref y.GetHeadRef(), y.Stride,
@@ -38,7 +38,7 @@ public static partial class BlasProvider
         var (m, n) = GetLengths(A);
         CheckLength(x, n);
         CheckLength(y, m);
-        Source.AxpyF(ConjType.NoConj, ConjType.NoConj,
+        Blis.AxpyF(ConjType.NoConj, ConjType.NoConj,
             m, n,
             in alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -51,7 +51,7 @@ public static partial class BlasProvider
         var (m, n) = GetLengths(A);
         CheckLength(x, m);
         CheckLength(y, n);
-        Source.DotxF(ConjType.NoConj, ConjType.NoConj,
+        Blis.DotxF(ConjType.NoConj, ConjType.NoConj,
             m, n,
             in alpha,
             ref A.GetHeadRef(), A.RowStride, A.ColStride,
@@ -68,7 +68,7 @@ public static partial class BlasProvider
         CheckLength(x, n);
         CheckLength(y, n);
         CheckLength(z, m);
-        Source.DotxAxpyF(ConjType.NoConj, 
+        Blis.DotxAxpyF(ConjType.NoConj, 
             ConjType.NoConj,
             ConjType.NoConj,
             ConjType.NoConj,

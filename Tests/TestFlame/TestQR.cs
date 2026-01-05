@@ -1,5 +1,4 @@
 ﻿using DDLA.Factorizations;
-using static DDLA.Factorizations.QR;
 
 namespace Tests.TestFlame;
 
@@ -10,6 +9,10 @@ public class TestQR
     private const int small = 64;
     private const int medium = 256;
     private const int large = 1024;
+
+    [TestMethod]
+    public void TestTinyUnbQRThin()
+        => TestQRDec(5, 3);
 
     [TestMethod]
     public void TestTinyUnbQRSquare()
@@ -79,3 +82,4 @@ public class TestQR
         }
     }
 }
+

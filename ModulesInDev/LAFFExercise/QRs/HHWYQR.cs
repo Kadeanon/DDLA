@@ -1,5 +1,5 @@
 ﻿using DDLA.Misc.Flags;
-using static DDLA.BLAS.BlasProvider;
+using static DDLA.BLAS.Managed.BlasProvider;
 
 namespace ModulesInDev.LAFFExercise.QRs;
 

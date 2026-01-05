@@ -1,4 +1,5 @@
 ﻿using DDLA.BLAS;
+using DDLA.BLAS.Managed;
 using DDLA.Misc;
 using DDLA.Utilities;
 using System.Diagnostics.CodeAnalysis;

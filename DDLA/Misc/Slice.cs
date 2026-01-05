@@ -34,4 +34,10 @@ public readonly struct Slice
     public readonly Range Range => range;
 
     public readonly bool IsIndex => isIndex;
+
+    public (int start, int length) GetOffsetAndLength(int srcLength)
+    {
+        if (IsIndex) return (Index.GetOffset(srcLength), 1);
+        else return Range.GetOffsetAndLength(srcLength);
+    }
 }

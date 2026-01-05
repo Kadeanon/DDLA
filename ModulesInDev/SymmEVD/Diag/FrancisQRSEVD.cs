@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using DDLA.BLAS;
+using DDLA.BLAS.Managed;
 using DDLA.Utilities;
 using Givens = (double c, double s);
 
